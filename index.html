@@ -138,7 +138,7 @@
   }
   @media (max-width: 700px) {
     .info { grid-template-columns: minmax(0, 1fr); row-gap: 40px; }
-    .info .welcome { grid-column: 1; font-size: min(8.6vw, 44px); }
+    .info .welcome { grid-column: 1; font-size: min(calc((100vw - var(--x1, 16px) - 20px) / 10.5), 44px); }
   }
 
   /* ---------- pixel rain transition ---------- */
