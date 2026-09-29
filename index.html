@@ -92,7 +92,13 @@
   .skip.show { opacity: 1; visibility: visible; }
   .skip:hover { color: var(--red); text-decoration: underline; text-underline-offset: 5px; }
   .skip:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
-  .page .skip { position: fixed; z-index: 6; }
+  /* info page: Skip sits under [ What we do ] */
+  .info .col1 { display: grid; gap: 1.28em; justify-items: start; align-content: start; }
+  .info .skip {
+    position: static; transform: none;
+    font-size: inherit; font-weight: 400; letter-spacing: inherit;
+    color: var(--red); padding: 0;
+  }
 
   /* ---------- info page (white) ---------- */
   .page {
@@ -180,7 +186,6 @@
 </div>
 
 <main class="page" id="info" hidden>
-  <button type="button" class="skip" id="infoSkip">Skip</button>
   <article class="info" id="infoText">
     <div class="sr-only">
       <h1>What we do</h1>
@@ -190,7 +195,10 @@
       <p>Together, these individual threads form a collective body of work.</p>
       <p>Welcome to STITCH</p>
     </div>
-    <div class="label" aria-hidden="true" data-type="16" data-pause="600">[ What we do ]</div>
+    <div class="col1">
+      <div class="label" aria-hidden="true" data-type="16" data-pause="600">[ What we do ]</div>
+      <button type="button" class="skip" id="infoSkip">Skip</button>
+    </div>
     <div class="body" aria-hidden="true">
       <p data-type="34" data-pause="600">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
       <p data-type="34" data-pause="600">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
