@@ -136,8 +136,9 @@
   /* meet the team: pixel portraits in a row, no boxes */
   .info .team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
   .info .member { margin: 0; display: grid; gap: .9em; justify-items: start; }
-  .info .member img { display: block; width: 192px; height: auto; image-rendering: pixelated; }   /* exact 3x so pixels stay square */
-  @media (max-width: 700px) { .info .member img { width: 128px; } }
+  .info .portrait { display: block; width: calc(var(--pw) * 4px); height: auto; shape-rendering: crispEdges; }   /* 4 screen px per portrait pixel */
+  .info .portrait rect { fill: var(--ink); }
+  @media (max-width: 700px) { .info .portrait { width: calc(var(--pw) * 3px); } }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
     display: inline-flex; align-items: center; gap: .75em;
@@ -237,7 +238,12 @@
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
-    <div class="body team" data-panel="team" hidden></div>
+    <div class="body team" data-panel="team" hidden>
+      <figure class="member">
+        <svg class="portrait" data-portrait="jordan-pipkorn" role="img" aria-label="Pixel portrait of Jordan Pipkorn"></svg>
+        <figcaption data-type="34" data-pause="0">Jordan Pipkorn</figcaption>
+      </figure>
+    </div>
     <div class="body links" data-panel="links" hidden>
       <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
         <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="0">Instagram</span>
@@ -621,6 +627,100 @@
     typeRaf = requestAnimationFrame(tick);
   }
 
+  // ---- Meet the team: pixel portraits, drawn cell by cell ("#" = black pixel)
+  const PORTRAITS = {
+    "jordan-pipkorn": [
+      "...................######..####...................",
+      "...............#########.#####.#..................",
+      "...............###############.#####..............",
+      "................#####################.............",
+      "............#########################.............",
+      "...........#..#####################..#............",
+      ".........###.###########################..........",
+      "..........#############################...........",
+      "..........#################.##########.#..........",
+      ".........##########.####.###.#########.#..........",
+      "........##.########.#.###.....#.#########.........",
+      ".......###########...#.........#.#########........",
+      "........########.#...#.............#.####.........",
+      ".........#######....................####.#........",
+      "..........######.....................###..........",
+      "........#######.....................####..........",
+      ".........######...######.....#####...##...........",
+      "..........#####..#....###..###....#..###..........",
+      "...........####....##...#............##...........",
+      "...........####...#####......####...##............",
+      "..........#...#.....##........#.....###...........",
+      "..........#.........................#.#...........",
+      "..........#.##...........#............#...........",
+      "..........#.............##..........#.#...........",
+      "..............#.........##..........#.#...........",
+      "...........#..##.......#............#.#...........",
+      "...........#..##.......##.##.........#............",
+      "............####........#..........#.#............",
+      "..............##.....###.#.#.......##.............",
+      "..............####..#........#....##..............",
+      "..............###.#...#######....#.#..............",
+      "...............###................##..............",
+      "...............##.#.#...###...#.###...............",
+      "...............###.#.#...#.....#.##...............",
+      "...............#..###.#.......#.##................",
+      "...............#...###.#.#...###.#................",
+      "...............#....###.#.#.##...#................",
+      "...............#......#######....#................",
+      "...............#.................#................",
+      "...............#.................#................",
+      "..............#...................#...............",
+      "............##....................##..............",
+      "..........####.....................####...........",
+      "........########..................#######.........",
+      "......###########................##########.......",
+      "....###############.............############......",
+      "...##################........##################...",
+      "..##############################################..",
+      ".################################################.",
+      "##################################################",
+      "##################################################",
+      "##################################################"
+    ],
+  };
+  const portraitCells = [];
+  infoText.querySelectorAll("svg[data-portrait]").forEach(svgEl => {
+    const rows = PORTRAITS[svgEl.dataset.portrait];
+    if (!rows) return;
+    const w = rows[0].length, h = rows.length;
+    svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svgEl.style.setProperty("--pw", w);
+    const cells = [];
+    rows.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch !== "#") return;
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", y); r.setAttribute("width", 1.02); r.setAttribute("height", 1.02);
+      svgEl.appendChild(r);
+      cells.push({ el: r, x, y });
+    }));
+    portraitCells.push({ cells, w, h });
+  });
+  let portraitRaf = null;
+  // pixels appear from the top down with some scatter, over about 1.4 seconds
+  function revealPortraits() {
+    cancelAnimationFrame(portraitRaf);
+    const SPREAD = 1400;
+    const all = [];
+    portraitCells.forEach(pc => pc.cells.forEach(c => {
+      c.t = (c.y / pc.h) * SPREAD * 0.7 + Math.random() * SPREAD * 0.3;
+      c.el.style.opacity = reduceMotion ? 1 : 0;
+      all.push(c);
+    }));
+    if (reduceMotion) return;
+    const t0 = performance.now();
+    (function step(now) {
+      const t = now - t0; let done = true;
+      all.forEach(c => { if (t >= c.t) c.el.style.opacity = 1; else done = false; });
+      if (!done) portraitRaf = requestAnimationFrame(step);
+    })(t0);
+  }
+
   // ---- sections: What we do / Who we are
   const tabs = [...infoText.querySelectorAll(".tab")];
   let currentTab = "what";
@@ -640,6 +740,7 @@
     labelBlocks.forEach(b => b.node.data = b.full);   // headings stay in full
     setTab(t.dataset.tab);
     info.scrollTop = 0;
+    if (t.dataset.tab === "team") revealPortraits();
     const blocks = panelBlocks[t.dataset.tab];
     if (!blocks.length) {
       // nothing to type yet (Links): just leave the blinking line in the empty section
