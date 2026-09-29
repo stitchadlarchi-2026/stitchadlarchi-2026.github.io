@@ -60,7 +60,7 @@
   .nav a:focus-visible, .nav .email:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
 
   /* ---------- home: intro + logo ---------- */
-  .stage { position: fixed; inset: 0; cursor: pointer; }
+  .stage { position: fixed; inset: 0; }
   .cluster { position: absolute; white-space: pre; letter-spacing: .01em; }
   .cluster .row { display: block; min-height: 1.3em; }
   .cluster .row.ghost { color: var(--red-dim); }
@@ -80,12 +80,18 @@
     opacity: 0; transition: opacity 1.4s ease;
   }
   .tagline.show { opacity: 1; }
-  .hint {
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-    font-size: 11px; color: var(--red-dim); opacity: 0; transition: opacity 1s ease;
-    letter-spacing: .08em; text-transform: uppercase;
+  .skip {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    appearance: none; background: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 11px; font-weight: 500;
+    color: var(--red-dim); letter-spacing: .14em; text-transform: uppercase;
+    padding: 8px 10px;
+    opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility .6s, color .2s ease;
   }
-  .hint.show { opacity: 1; }
+  .skip.show { opacity: 1; visibility: visible; }
+  .skip:hover { color: var(--red); text-decoration: underline; text-underline-offset: 5px; }
+  .skip:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
 
   /* ---------- info page (white) ---------- */
   .page {
@@ -159,7 +165,7 @@
 </nav>
 <span class="sr-only" id="emailStatus" role="status" aria-live="polite"></span>
 
-<div class="stage" id="home" title="Click to replay">
+<div class="stage" id="home">
   <div id="clusters"></div>
   <div class="logo-wrap">
     <svg class="logo" id="logo" viewBox="0 0 40 7" aria-label="STITCH" role="img"></svg>
@@ -169,7 +175,7 @@
       <span>4 December 2026</span>
     </div>
   </div>
-  <div class="hint" id="hint">Click to replay</div>
+  <button type="button" class="skip" id="skip">Skip intro</button>
 </div>
 
 <main class="page" id="info" hidden>
@@ -242,7 +248,7 @@
   const home = document.getElementById("home");
   const clustersEl = document.getElementById("clusters");
   const tagline = document.getElementById("tagline");
-  const hint = document.getElementById("hint");
+  const skipBtn = document.getElementById("skip");
   const nav = document.getElementById("nav");
   const info = document.getElementById("info");
   const infoText = document.getElementById("infoText");
@@ -340,7 +346,7 @@
                  .sort((a, b) => a.k - b.k);
     order.forEach((o, i) => { o.delay = (i / order.length) * T_LOGO_SPREAD; o.cell.el.style.opacity = 0; });
     tagline.classList.remove("show");
-    hint.classList.remove("show");
+    skipBtn.classList.add("show");
   }
 
   function renderCluster(n, now) {
@@ -386,7 +392,7 @@
       if (v < 1) done = false;
     });
     if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) { tagline.classList.add("show"); nav.classList.add("show"); }
-    if (done) { setTimeout(() => hint.classList.add("show"), 1500); raf = null; return; }
+    if (done) { skipBtn.classList.remove("show"); raf = null; return; }
     raf = requestAnimationFrame(introFrame);
   }
 
@@ -398,14 +404,29 @@
     nav.classList.add("show");
   }
 
+  // the intro plays again every 20 seconds while the home page is showing
+  const REPLAY_EVERY = 20000;
+  let cycleTimer = null;
+  function scheduleReplay() {
+    clearTimeout(cycleTimer);
+    cycleTimer = setTimeout(() => { if (current === "home" && !washing) playIntro(); }, REPLAY_EVERY);
+  }
+
   function playIntro() {
     cancelAnimationFrame(raf);
     start = 0;
     setupIntro();
-    if (reduceMotion) { showLogoAtRest(); return; }
+    if (reduceMotion) { showLogoAtRest(); skipBtn.classList.remove("show"); return; }
     raf = requestAnimationFrame(introFrame);
+    scheduleReplay();
   }
-  home.addEventListener("click", playIntro);
+
+  // skip straight to the end of the intro; the 20-second cycle restarts from here
+  skipBtn.addEventListener("click", () => {
+    showLogoAtRest();
+    skipBtn.classList.remove("show");
+    scheduleReplay();
+  });
 
   // ================= PIXEL RAIN =================
   // White (or black) pixels rain from the top; each column's fill follows its drops down
@@ -552,6 +573,7 @@
     Object.entries(PAGES).forEach(([key, pg]) => { pg.el.hidden = key !== name; });
     if (name !== "info") { cancelAnimationFrame(typeRaf); typeRaf = null; }
     home.hidden = name !== "home";
+    if (name !== "home") { clearTimeout(cycleTimer); cancelAnimationFrame(raf); raf = null; skipBtn.classList.remove("show"); }
     if (name === "home") playIntro();
     else {
       PAGES[name].el.scrollTop = 0;
