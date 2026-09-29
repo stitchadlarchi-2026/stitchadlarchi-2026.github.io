@@ -134,11 +134,20 @@
   .info .tab[aria-current="true"] { color: var(--red); cursor: default; }
   .info .tab:not([aria-current="true"]):hover { text-decoration: underline; text-underline-offset: 4px; }
   /* meet the team: pixel portraits in a row, no boxes */
-  .info .team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
+  .info .body.team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
   .info .member { margin: 0; display: grid; gap: .9em; justify-items: start; }
-  .info .portrait { display: block; width: calc(var(--pw) * 4px); height: auto; shape-rendering: crispEdges; }   /* 4 screen px per portrait pixel */
+  .info .member { justify-items: center; gap: .7em; }
+  .info .portrait { display: block; width: calc(var(--pw) * 3px); height: auto; shape-rendering: crispEdges; }   /* 3 screen px per portrait pixel */
   .info .portrait rect { fill: var(--ink); }
-  @media (max-width: 700px) { .info .portrait { width: calc(var(--pw) * 3px); } }
+  /* small red square above the head: hover or tap it to show the name */
+  .info .pin {
+    appearance: none; border: 0; padding: 0; cursor: pointer;
+    width: 9px; height: 9px; background: var(--red);
+  }
+  .info .pin:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .info .member figcaption { visibility: hidden; white-space: nowrap; color: var(--red); }
+  .info .member.named figcaption { visibility: visible; }
+  @media (max-width: 700px) { .info .portrait { width: calc(var(--pw) * 2px); } }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
     display: inline-flex; align-items: center; gap: .75em;
@@ -240,8 +249,9 @@
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
     <div class="body team" data-panel="team" hidden>
       <figure class="member">
+        <button type="button" class="pin" aria-label="Show name" aria-expanded="false"></button>
         <svg class="portrait" data-portrait="jordan-pipkorn" role="img" aria-label="Pixel portrait of Jordan Pipkorn"></svg>
-        <figcaption data-type="34" data-pause="0">Jordan Pipkorn</figcaption>
+        <figcaption>Jordan Pipkorn</figcaption>
       </figure>
     </div>
     <div class="body links" data-panel="links" hidden>
@@ -702,6 +712,24 @@
     portraitCells.push({ cells, w, h });
   });
   let portraitRaf = null;
+
+  // the red square shows the person's name on hover, keyboard focus or tap (tap again to hide)
+  infoText.querySelectorAll(".member").forEach(m => {
+    const pin = m.querySelector(".pin"), cap = m.querySelector("figcaption");
+    const name = cap.textContent;
+    let pinned = false;
+    const show = () => { if (!m.classList.contains("named")) { m.classList.add("named"); scrambleTo(cap, name); } pin.setAttribute("aria-expanded", "true"); };
+    const hide = () => { if (pinned) return; m.classList.remove("named"); pin.setAttribute("aria-expanded", "false"); };
+    pin.addEventListener("mouseenter", show);
+    pin.addEventListener("mouseleave", hide);
+    pin.addEventListener("focus", show);
+    pin.addEventListener("blur", () => { pinned = false; hide(); });
+    pin.addEventListener("click", e => {
+      e.stopPropagation();
+      pinned = !pinned;
+      if (pinned) show(); else { m.classList.remove("named"); pin.setAttribute("aria-expanded", "false"); }
+    });
+  });
   // pixels appear from the top down with some scatter, over about 1.4 seconds
   function revealPortraits() {
     cancelAnimationFrame(portraitRaf);
@@ -743,10 +771,10 @@
     if (t.dataset.tab === "team") revealPortraits();
     const blocks = panelBlocks[t.dataset.tab];
     if (!blocks.length) {
-      // nothing to type yet (Links): just leave the blinking line in the empty section
+      // nothing to type here (Meet the team): no blinking line, no Skip
       cancelAnimationFrame(typeRaf); typeRaf = null; seq = [];
       infoSkip.classList.remove("show");
-      infoText.querySelector(`[data-panel="${t.dataset.tab}"]`).appendChild(caret);
+      caret.remove();
       return;
     }
     runTyping(blocks, 0, 250);
