@@ -92,6 +92,7 @@
   .skip.show { opacity: 1; visibility: visible; }
   .skip:hover { color: var(--red); text-decoration: underline; text-underline-offset: 5px; }
   .skip:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
+  .page .skip { position: fixed; z-index: 6; }
 
   /* ---------- info page (white) ---------- */
   .page {
@@ -179,6 +180,7 @@
 </div>
 
 <main class="page" id="info" hidden>
+  <button type="button" class="skip" id="infoSkip">Skip</button>
   <article class="info" id="infoText">
     <div class="sr-only">
       <h1>What we do</h1>
@@ -509,18 +511,24 @@
   });
   let typeRaf = null;
 
+  const infoSkip = document.getElementById("infoSkip");
+  const LAST = typeBlocks.length - 1;   // "Welcome to STITCH"
+
   function finishTyping() {
     cancelAnimationFrame(typeRaf); typeRaf = null;
     typeBlocks.forEach(b => b.node.data = b.full);
-    typeBlocks[typeBlocks.length - 1].el.appendChild(caret);
+    typeBlocks[LAST].el.appendChild(caret);
+    infoSkip.classList.remove("show");
   }
 
-  function startTyping() {
+  // type from block `from` onwards; earlier blocks are shown in full
+  function startTyping(from = 0, firstWait = 450) {
     cancelAnimationFrame(typeRaf);
-    typeBlocks.forEach(b => b.node.data = "");
-    typeBlocks[0].el.appendChild(caret);
+    typeBlocks.forEach((b, i) => b.node.data = i < from ? b.full : "");
+    typeBlocks[from].el.appendChild(caret);
+    infoSkip.classList.toggle("show", from < LAST && !reduceMotion);
     if (reduceMotion) { finishTyping(); return; }
-    let bi = 0, ci = 0, carry = 0, wait = 450, last = performance.now();
+    let bi = from, ci = 0, carry = 0, wait = firstWait, last = performance.now();
     function tick(now) {
       const dt = Math.min(now - last, 64); last = now;
       if (wait > 0) { wait -= dt; typeRaf = requestAnimationFrame(tick); return; }
@@ -535,6 +543,7 @@
         if (bi === typeBlocks.length - 1) { typeRaf = null; return; }
         wait = b.pause; bi++; ci = 0; carry = 0;
         typeBlocks[bi].el.appendChild(caret);
+        if (bi === LAST) infoSkip.classList.remove("show");
       }
       typeRaf = requestAnimationFrame(tick);
     }
@@ -553,6 +562,11 @@
 
   // click anywhere on the info page to skip to the end
   info.addEventListener("click", e => { if (typeRaf) finishTyping(); });
+  // Skip: show the body text at once, then type "Welcome to STITCH" as normal
+  infoSkip.addEventListener("click", e => {
+    e.stopPropagation();
+    startTyping(LAST, 250);
+  });
 
   // ================= ROUTING =================
   const PAGES = { info: { el: info, text: infoText, color: "#ffffff" } };
