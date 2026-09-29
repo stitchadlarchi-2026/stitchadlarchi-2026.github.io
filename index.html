@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STITCH — Adelaide University Graduate Exhibition 2026</title>
+<meta name="description" content="STITCH, the Adelaide University 2026 annual graduate exhibition. 4 December 2026.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 7'%3E%3Cpath fill='%23C82B29' d='M1 0h3v1H1zM0 1h1v2H0zM4 1h1v1H4zM1 3h3v1H1zM4 4h1v2H4zM0 5h1v1H0zM1 6h3v1H1z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000;
+    --red: #C82B29;
+    --red-dim: rgba(200, 43, 41, .55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); }
+  body {
+    color: var(--red);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.3;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .stage { position: fixed; inset: 0; cursor: pointer; }
+
+  /* scramble text clusters */
+  .cluster {
+    position: absolute;
+    white-space: pre;
+    letter-spacing: .01em;
+  }
+  .cluster .row { display: block; min-height: 1.3em; }
+  .cluster .row.ghost { color: var(--red-dim); }
+
+  /* logo */
+  .logo-wrap {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(78vw, 820px);
+    text-align: center;
+  }
+  .logo { width: 100%; height: auto; display: block; overflow: visible; }
+  .logo rect { fill: var(--red); opacity: 0; }
+  .tagline {
+    margin-top: clamp(20px, 4vw, 40px);
+    display: flex; justify-content: space-between; gap: 16px;
+    font-size: clamp(10px, 1.3vw, 13px);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    opacity: 0;
+    transition: opacity 1.4s ease;
+  }
+  .tagline.show { opacity: 1; }
+  .hint {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: var(--red-dim); opacity: 0; transition: opacity 1s ease;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .hint.show { opacity: 1; }
+  @media (max-width: 600px) {
+    .logo-wrap { width: calc(100vw - 32px); }
+    .tagline { flex-direction: column; align-items: center; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage" title="Click to replay">
+  <div id="clusters"></div>
+  <div class="logo-wrap">
+    <svg class="logo" id="logo" viewBox="0 0 40 7" aria-label="STITCH" role="img"></svg>
+    <div class="tagline" id="tagline">
+      <span>Adelaide University</span>
+      <span>Graduate Exhibition 2026</span>
+      <span>4 December 2026</span>
+    </div>
+  </div>
+  <div class="hint" id="hint">Click to replay</div>
+</div>
+
+<script>
+(() => {
+  // ---------- EDIT THESE: the lines that flash up before the logo ----------
+  const CLUSTERS = [
+    { text: "Annual Graduate Exhibition", x: 0.08, y: 0.62, align: "left"  },
+    { text: "Adelaide University",        x: 0.52, y: 0.22, align: "left"  },
+    { text: "4 December 2026",            x: 0.60, y: 0.74, align: "left"  },
+    { text: "STITCH",                     x: 0.18, y: 0.30, align: "left"  },
+  ];
+
+  // ---------- STITCH pixel logo (5x7 letters, 2-cell gaps) ----------
+  const LETTERS = {
+    S: [".###.","#...#","#....",".###.","....#","#...#",".###."],
+    T: ["#####","..#..","..#..","..#..","..#..","..#..","..#.."],
+    I: ["#####","..#..","..#..","..#..","..#..","..#..","#####"],
+    C: [".###.","#...#","#....","#....","#....","#...#",".###."],
+    H: ["#...#","#...#","#...#","#####","#...#","#...#","#...#"],
+  };
+  const WORD = "STITCH";
+  const GAP = 0.06; // hairline seam between pixels, like the original artwork
+
+  const svg = document.getElementById("logo");
+  const NS = "http://www.w3.org/2000/svg";
+  const cells = [];
+  [...WORD].forEach((ch, li) => {
+    LETTERS[ch].forEach((row, r) => {
+      [...row].forEach((v, c) => {
+        if (v !== "#") return;
+        const rect = document.createElementNS(NS, "rect");
+        rect.setAttribute("x", li * 7 + c + GAP / 2);
+        rect.setAttribute("y", r + GAP / 2);
+        rect.setAttribute("width", 1 - GAP);
+        rect.setAttribute("height", 1 - GAP);
+        svg.appendChild(rect);
+        cells.push({ el: rect, li, r, c });
+      });
+    });
+  });
+
+  const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*()[]{}<>/\\?+=-_;:";
+  const rnd = n => Array.from({ length: n }, () => GLYPHS[(Math.random() * GLYPHS.length) | 0]).join("");
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+
+  const clustersEl = document.getElementById("clusters");
+  const tagline = document.getElementById("tagline");
+  const hint = document.getElementById("hint");
+
+  // timeline (ms)
+  const T_TEXT_START = 250;
+  const T_TEXT_STAGGER = 260;
+  const T_TEXT_BUILD = 1100;   // how long each stack takes to resolve
+  const T_TEXT_HOLD = 450;
+  const T_TEXT_OUT = 380;
+  const T_LOGO_START = 3000;
+  const T_LOGO_SPREAD = 3200;  // cells keep arriving over this window
+  const T_CELL_FADE = 900;     // each cell's own fade-in
+
+  let raf = null, start = 0, clusterNodes = [], order = [];
+
+  function setup() {
+    clustersEl.innerHTML = "";
+    clusterNodes = CLUSTERS.map((cfg, i) => {
+      const el = document.createElement("div");
+      el.className = "cluster";
+      el.style.left = (cfg.x * 100) + "%";
+      el.style.top = (cfg.y * 100) + "%";
+      const rows = Array.from({ length: 4 }, () => {
+        const s = document.createElement("span");
+        s.className = "row";
+        el.appendChild(s);
+        return s;
+      });
+      clustersEl.appendChild(el);
+      return { cfg, el, rows, t0: T_TEXT_START + i * T_TEXT_STAGGER, lastTick: 0 };
+    });
+
+    // stitch order: sweep left to right, with some randomness so it feels hand-stitched
+    order = cells.map(cell => ({
+      cell,
+      k: (cell.li * 7 + cell.c) / 40 * 0.65 + Math.random() * 0.35,
+    })).sort((a, b) => a.k - b.k);
+    order.forEach((o, i) => { o.delay = (i / order.length) * T_LOGO_SPREAD; o.cell.el.style.opacity = 0; });
+
+    tagline.classList.remove("show");
+    hint.classList.remove("show");
+  }
+
+  function renderCluster(n, now) {
+    const t = now - n.t0;
+    const text = n.cfg.text;
+    const total = T_TEXT_BUILD + T_TEXT_HOLD + T_TEXT_OUT;
+    if (t < 0 || t > total) { n.el.style.visibility = "hidden"; return; }
+    n.el.style.visibility = "visible";
+    // throttle glyph churn so it reads as flicker, not noise
+    if (now - n.lastTick < 45) return;
+    n.lastTick = now;
+
+    if (t < T_TEXT_BUILD) {
+      // stacked rows, each further along than the one above: the "echo" build-up
+      const p = t / T_TEXT_BUILD;
+      n.rows.forEach((row, i) => {
+        const lag = (n.rows.length - 1 - i) * 0.16;
+        const q = clamp((p - lag) / (1 - lag * 0.6));
+        const shown = Math.floor(ease(q) * text.length);
+        const tail = q >= 1 ? "" : rnd(Math.min(text.length - shown, 2 + ((Math.random() * 6) | 0)));
+        row.textContent = q <= 0 ? "" : text.slice(0, shown) + tail;
+        row.classList.toggle("ghost", i < n.rows.length - 1);
+        // stack collapses upward as the last row resolves
+        row.style.display = (p > 0.85 && i < n.rows.length - 1) ? "none" : "block";
+      });
+    } else if (t < T_TEXT_BUILD + T_TEXT_HOLD) {
+      n.rows.forEach((row, i) => {
+        row.style.display = i === n.rows.length - 1 ? "block" : "none";
+        row.classList.remove("ghost");
+        row.textContent = text;
+      });
+    } else {
+      // dissolve: characters get eaten from the front and replaced with noise
+      const p = (t - T_TEXT_BUILD - T_TEXT_HOLD) / T_TEXT_OUT;
+      const keep = Math.floor((1 - p) * text.length);
+      const last = n.rows[n.rows.length - 1];
+      last.textContent = rnd(Math.max(0, Math.floor(keep * 0.4))) + text.slice(text.length - keep).replace(/./g, ch => Math.random() < p ? " " : ch);
+    }
+  }
+
+  function frame(ts) {
+    if (!start) start = ts;
+    const now = ts - start;
+
+    clusterNodes.forEach(n => renderCluster(n, now));
+
+    let done = true;
+    order.forEach(o => {
+      const t = now - T_LOGO_START - o.delay;
+      const v = clamp(t / T_CELL_FADE);
+      o.cell.el.style.opacity = ease(v).toFixed(3);
+      if (v < 1) done = false;
+    });
+
+    if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) tagline.classList.add("show");
+    if (done) { setTimeout(() => hint.classList.add("show"), 1500); return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    cancelAnimationFrame(raf);
+    start = 0;
+    setup();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      cells.forEach(c => c.el.style.opacity = 1);
+      tagline.classList.add("show");
+      return;
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  document.getElementById("stage").addEventListener("click", play);
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(play);
+})();
+</script>
+</body>
+</html>
