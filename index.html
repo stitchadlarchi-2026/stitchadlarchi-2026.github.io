@@ -133,6 +133,14 @@
   }
   .info .tab[aria-current="true"] { color: var(--ink); cursor: default; }
   .info .tab:not([aria-current="true"]):hover { text-decoration: underline; text-underline-offset: 4px; }
+  .info .links { display: grid; gap: .9em; justify-items: start; }
+  .info .ilink {
+    display: inline-flex; align-items: center; gap: .75em;
+    color: var(--ink); text-decoration: none;
+  }
+  .info .ilink .sq { width: .8em; height: .8em; background: var(--red); flex: none; }
+  .info .ilink:hover span:last-child { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .info .ilink:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .info .tab:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
   .info .welcome {
@@ -223,7 +231,11 @@
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
-    <div class="body" data-panel="links" hidden></div>
+    <div class="body links" data-panel="links" hidden>
+      <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
+        <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="0">Instagram</span>
+      </a>
+    </div>
     <div class="body" data-panel="who" aria-hidden="true" hidden>
       <p data-type="34" data-pause="0">We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
