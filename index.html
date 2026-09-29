@@ -102,10 +102,11 @@
     line-height: 1.28;
     letter-spacing: .03em;
     padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
-    padding-inline: max(16px, 7vw);
+    /* column starts are measured from the menu: label under HOME, text under INFO */
+    padding-inline: var(--x1, max(16px, 7vw)) 16px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
-    column-gap: 4vw;
+    grid-template-columns: var(--c1, minmax(0, 1fr)) minmax(0, 1fr);
+    column-gap: 0;
     row-gap: clamp(28px, 5.5vh, 72px);
     align-items: start;
   }
@@ -136,7 +137,7 @@
     clip: rect(0 0 0 0); white-space: nowrap;
   }
   @media (max-width: 700px) {
-    .info { grid-template-columns: 1fr; row-gap: 40px; }
+    .info { grid-template-columns: minmax(0, 1fr); row-gap: 40px; }
     .info .welcome { grid-column: 1; font-size: min(8.6vw, 44px); }
   }
 
@@ -518,6 +519,17 @@
     }
     typeRaf = requestAnimationFrame(tick);
   }
+  // line the info columns up with the HOME and INFO menu labels
+  const homeLink = nav.querySelector('a[href="#home"]');
+  const infoLink = nav.querySelector('a[href="#info"]');
+  function alignInfo() {
+    const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
+    const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
+    infoText.style.setProperty("--x1", x1 + "px");
+    infoText.style.setProperty("--c1", (x2 - x1) + "px");
+  }
+  window.addEventListener("resize", alignInfo);
+
   // click anywhere on the info page to skip to the end
   info.addEventListener("click", e => { if (typeRaf) finishTyping(); });
 
@@ -543,7 +555,7 @@
     if (name === "home") playIntro();
     else {
       PAGES[name].el.scrollTop = 0;
-      if (name === "info") startTyping();
+      if (name === "info") { alignInfo(); startTyping(); }
     }
   }
 
