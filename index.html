@@ -133,6 +133,11 @@
   }
   .info .tab[aria-current="true"] { color: var(--red); cursor: default; }
   .info .tab:not([aria-current="true"]):hover { text-decoration: underline; text-underline-offset: 4px; }
+  /* meet the team: pixel portraits in a row, no boxes */
+  .info .team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
+  .info .member { margin: 0; display: grid; gap: .9em; justify-items: start; }
+  .info .member img { display: block; width: 192px; height: auto; image-rendering: pixelated; }   /* exact 3x so pixels stay square */
+  @media (max-width: 700px) { .info .member img { width: 128px; } }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
     display: inline-flex; align-items: center; gap: .75em;
@@ -232,7 +237,12 @@
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
-    <div class="body" data-panel="team" hidden></div>
+    <div class="body team" data-panel="team" hidden>
+      <figure class="member">
+        <img src="team/connor-kioussis.png" width="64" height="82" alt="Pixel portrait of Connor Kioussis">
+        <figcaption data-type="34" data-pause="0">Connor Kioussis</figcaption>
+      </figure>
+    </div>
     <div class="body links" data-panel="links" hidden>
       <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
         <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="0">Instagram</span>
