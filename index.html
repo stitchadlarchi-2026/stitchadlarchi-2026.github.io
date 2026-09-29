@@ -44,7 +44,11 @@
   }
   .nav.show { opacity: 1; }
   body[data-view="info"] .nav { background: var(--white); }
-  .nav a {
+  .nav .email {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    font-family: inherit; line-height: inherit;
+  }
+  .nav a, .nav .email {
     justify-self: center;
     color: var(--red); text-decoration: none;
     font-size: clamp(11px, 1.2vw, 13px); font-weight: 500;
@@ -52,7 +56,8 @@
     padding: 6px 8px; white-space: pre;
   }
   .nav a:hover, .nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 5px; }
-  .nav a:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
+  .nav .email:hover { text-decoration: underline; text-underline-offset: 5px; }
+  .nav a:focus-visible, .nav .email:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
 
   /* ---------- home: intro + logo ---------- */
   .stage { position: fixed; inset: 0; cursor: pointer; }
@@ -93,22 +98,24 @@
     color: var(--ink);
     font-family: var(--mono);
     text-transform: uppercase;
-    font-size: clamp(12px, 1.2vw, 17px);
+    font-size: clamp(11px, min(1.15vw, 1.95vh), 17px);
     line-height: 1.28;
     letter-spacing: .03em;
-    padding-block: clamp(110px, 18vh, 170px) clamp(72px, 12vh, 120px);
+    padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
     padding-inline: max(16px, 7vw);
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
     column-gap: 4vw;
-    row-gap: clamp(56px, 11vh, 120px);
+    row-gap: clamp(28px, 5.5vh, 72px);
     align-items: start;
   }
   .info .label { white-space: pre; }
   .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
   .info .welcome {
-    grid-column: 1 / -1;
-    font-size: clamp(28px, 7.2vw, 124px);
+    grid-column: 2;
+    color: var(--red);
+    white-space: nowrap;
+    font-size: clamp(22px, min(5.1vw, 9vh), 96px);
     font-weight: 500;
     line-height: .95;
     letter-spacing: -.01em;
@@ -130,7 +137,7 @@
   }
   @media (max-width: 700px) {
     .info { grid-template-columns: 1fr; row-gap: 40px; }
-    .info .welcome { grid-column: 1; }
+    .info .welcome { grid-column: 1; font-size: min(8.6vw, 44px); }
   }
 
   /* ---------- pixel rain transition ---------- */
@@ -146,9 +153,10 @@
 <nav class="nav" id="nav" aria-label="Main menu">
   <a href="#home">Home</a>
   <a href="#info">Info</a>
-  <a href="#contact">Contact</a>
+  <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email me</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
+<span class="sr-only" id="emailStatus" role="status" aria-live="polite"></span>
 
 <div class="stage" id="home" title="Click to replay">
   <div id="clusters"></div>
@@ -173,14 +181,14 @@
       <p>Together, these individual threads form a collective body of work.</p>
       <p>Welcome to STITCH</p>
     </div>
-    <div class="label" aria-hidden="true" data-type="40" data-pause="350">[ What we do ]</div>
+    <div class="label" aria-hidden="true" data-type="16" data-pause="600">[ What we do ]</div>
     <div class="body" aria-hidden="true">
-      <p data-type="170" data-pause="260">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
-      <p data-type="170" data-pause="260">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
-      <p data-type="170" data-pause="260">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
-      <p data-type="120" data-pause="650">Together, these individual threads form a collective body of work.</p>
+      <p data-type="62" data-pause="520">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
+      <p data-type="62" data-pause="520">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
+      <p data-type="62" data-pause="520">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
+      <p data-type="50" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
-    <div class="welcome" aria-hidden="true" data-type="11" data-pause="0">Welcome to STITCH</div>
+    <div class="welcome" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
   </article>
 </main>
 
@@ -251,6 +259,58 @@
         a.textContent = label.slice(0, fixed) + rnd(label.length - fixed);
         if (fixed >= label.length) { clearInterval(timer); a.textContent = label; }
       }, 35);
+    });
+  });
+
+  // ================= EMAIL ME (copy to clipboard) =================
+  const EMAIL = "stitch.adl.archi@gmail.com";
+  const emailBtn = document.getElementById("emailBtn");
+  const emailStatus = document.getElementById("emailStatus");
+  let copiedTimer = null, copied = false;
+
+  function scrambleTo(el, text) {
+    clearInterval(el._scr);
+    if (reduceMotion) { el.textContent = text; return; }
+    let step = 0;
+    el._scr = setInterval(() => {
+      step++;
+      const fixed = Math.floor(step / 8 * text.length);
+      el.textContent = text.slice(0, fixed) + rnd(text.length - fixed);
+      if (fixed >= text.length) { clearInterval(el._scr); el.textContent = text; }
+    }, 35);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise((resolve, reject) => {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      ok ? resolve() : reject();
+    });
+  }
+
+  emailBtn.setAttribute("aria-label", "Copy email address " + EMAIL);
+  emailBtn.addEventListener("mouseenter", () => { if (!copied) scrambleTo(emailBtn, "Copy email"); });
+  emailBtn.addEventListener("mouseleave", () => { if (!copied) scrambleTo(emailBtn, "Email me"); });
+  emailBtn.addEventListener("click", () => {
+    copyText(EMAIL).then(() => {
+      copied = true;
+      scrambleTo(emailBtn, "Email copied");
+      emailStatus.textContent = "Email address copied: " + EMAIL;
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => {
+        copied = false;
+        scrambleTo(emailBtn, emailBtn.matches(":hover") ? "Copy email" : "Email me");
+      }, 2200);
+    }).catch(() => {
+      // copying was blocked: show the address so it can be copied by hand
+      copied = true;
+      scrambleTo(emailBtn, EMAIL);
+      emailStatus.textContent = EMAIL;
     });
   });
 
@@ -443,7 +503,7 @@
       const dt = Math.min(now - last, 64); last = now;
       if (wait > 0) { wait -= dt; typeRaf = requestAnimationFrame(tick); return; }
       const b = typeBlocks[bi];
-      carry += dt / 1000 * b.speed * (0.6 + Math.random() * 0.8);
+      carry += dt / 1000 * b.speed * (0.55 + Math.random() * 0.9);
       const n = Math.floor(carry); carry -= n;
       if (n > 0) {
         ci = Math.min(b.full.length, ci + n);
