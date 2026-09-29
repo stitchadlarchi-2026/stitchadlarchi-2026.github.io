@@ -88,23 +88,50 @@
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     background: var(--white);
   }
+  /* two columns: bracketed label | typed statement; big welcome spans both */
   .info {
     color: var(--ink);
-    font-family: var(--sans);
-    font-size: clamp(19px, 1.9vw, 27px);
-    line-height: 1.38;
-    letter-spacing: -.005em;
-    max-width: 23.5em;
-    padding-block: clamp(96px, 16vh, 150px) clamp(64px, 12vh, 120px);
-    padding-inline: max(16px, 12vw) 16px;
-    display: grid; gap: 1.35em;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    font-size: clamp(12px, 1.2vw, 17px);
+    line-height: 1.28;
+    letter-spacing: .03em;
+    padding-block: clamp(110px, 18vh, 170px) clamp(72px, 12vh, 120px);
+    padding-inline: max(16px, 7vw);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+    column-gap: 4vw;
+    row-gap: clamp(56px, 11vh, 120px);
+    align-items: start;
   }
-  .info p { opacity: 0; transform: translateY(10px); transition: opacity .8s ease, transform .8s ease; }
-  .info.show p { opacity: 1; transform: none; }
-  .info.show p:nth-child(2) { transition-delay: .12s; }
-  .info.show p:nth-child(3) { transition-delay: .24s; }
-  .info.show p:nth-child(4) { transition-delay: .36s; }
-  .info.show p:nth-child(5) { transition-delay: .48s; }
+  .info .label { white-space: pre; }
+  .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
+  .info .welcome {
+    grid-column: 1 / -1;
+    font-size: clamp(28px, 7.2vw, 124px);
+    font-weight: 500;
+    line-height: .95;
+    letter-spacing: -.01em;
+    min-height: .95em;
+  }
+  .caret {
+    display: inline-block;
+    width: .07em; min-width: 2px;
+    height: 1.02em;
+    margin-left: .08em;
+    vertical-align: -.14em;
+    background: currentColor;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  @media (max-width: 700px) {
+    .info { grid-template-columns: 1fr; row-gap: 40px; }
+    .info .welcome { grid-column: 1; }
+  }
 
   /* ---------- pixel rain transition ---------- */
   #wash { position: fixed; inset: 0; z-index: 20; pointer-events: none; width: 100%; height: 100%; }
@@ -138,11 +165,22 @@
 
 <main class="page" id="info" hidden>
   <article class="info" id="infoText">
-    <p>STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
-    <p>Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
-    <p>Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
-    <p>Together, these individual threads form a collective body of work.</p>
-    <p>Welcome to STITCH</p>
+    <div class="sr-only">
+      <h1>What we do</h1>
+      <p>STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
+      <p>Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
+      <p>Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
+      <p>Together, these individual threads form a collective body of work.</p>
+      <p>Welcome to STITCH</p>
+    </div>
+    <div class="label" aria-hidden="true" data-type="40" data-pause="350">[ What we do ]</div>
+    <div class="body" aria-hidden="true">
+      <p data-type="170" data-pause="260">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
+      <p data-type="170" data-pause="260">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
+      <p data-type="170" data-pause="260">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
+      <p data-type="120" data-pause="650">Together, these individual threads form a collective body of work.</p>
+    </div>
+    <div class="welcome" aria-hidden="true" data-type="11" data-pause="0">Welcome to STITCH</div>
   </article>
 </main>
 
@@ -377,6 +415,52 @@
     requestAnimationFrame(draw);
   }
 
+  // ================= TYPEWRITER (info page) =================
+  const caret = document.createElement("span");
+  caret.className = "caret";
+  const typeBlocks = [...infoText.querySelectorAll("[data-type]")].map(el => {
+    const full = el.textContent;
+    const node = document.createTextNode("");
+    el.textContent = "";
+    el.appendChild(node);
+    return { el, node, full, speed: +el.dataset.type, pause: +el.dataset.pause };
+  });
+  let typeRaf = null;
+
+  function finishTyping() {
+    cancelAnimationFrame(typeRaf); typeRaf = null;
+    typeBlocks.forEach(b => b.node.data = b.full);
+    typeBlocks[typeBlocks.length - 1].el.appendChild(caret);
+  }
+
+  function startTyping() {
+    cancelAnimationFrame(typeRaf);
+    typeBlocks.forEach(b => b.node.data = "");
+    typeBlocks[0].el.appendChild(caret);
+    if (reduceMotion) { finishTyping(); return; }
+    let bi = 0, ci = 0, carry = 0, wait = 450, last = performance.now();
+    function tick(now) {
+      const dt = Math.min(now - last, 64); last = now;
+      if (wait > 0) { wait -= dt; typeRaf = requestAnimationFrame(tick); return; }
+      const b = typeBlocks[bi];
+      carry += dt / 1000 * b.speed * (0.6 + Math.random() * 0.8);
+      const n = Math.floor(carry); carry -= n;
+      if (n > 0) {
+        ci = Math.min(b.full.length, ci + n);
+        b.node.data = b.full.slice(0, ci);
+      }
+      if (ci >= b.full.length) {
+        if (bi === typeBlocks.length - 1) { typeRaf = null; return; }
+        wait = b.pause; bi++; ci = 0; carry = 0;
+        typeBlocks[bi].el.appendChild(caret);
+      }
+      typeRaf = requestAnimationFrame(tick);
+    }
+    typeRaf = requestAnimationFrame(tick);
+  }
+  // click anywhere on the info page to skip to the end
+  info.addEventListener("click", e => { if (typeRaf) finishTyping(); });
+
   // ================= ROUTING =================
   const PAGES = { info: { el: info, text: infoText, color: "#ffffff" } };
   let current = "home";
@@ -393,15 +477,13 @@
     document.body.dataset.view = name;
     document.querySelector('meta[name="theme-color"]').content = name === "home" ? "#000000" : "#ffffff";
     markNav(name);
-    Object.entries(PAGES).forEach(([key, pg]) => {
-      pg.el.hidden = key !== name;
-      pg.text.classList.remove("show");
-    });
+    Object.entries(PAGES).forEach(([key, pg]) => { pg.el.hidden = key !== name; });
+    if (name !== "info") { cancelAnimationFrame(typeRaf); typeRaf = null; }
     home.hidden = name !== "home";
     if (name === "home") playIntro();
     else {
       PAGES[name].el.scrollTop = 0;
-      requestAnimationFrame(() => requestAnimationFrame(() => PAGES[name].text.classList.add("show")));
+      if (name === "info") startTyping();
     }
   }
 
