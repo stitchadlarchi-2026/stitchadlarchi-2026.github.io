@@ -211,7 +211,8 @@
     <div class="col1">
       <div class="tabs" role="group" aria-label="Info sections">
         <button type="button" class="tab" data-tab="what" aria-current="true"><span data-type="16" data-pause="200">[ What we do ]</span></button>
-        <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="600">[ Who we are ]</span></button>
+        <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="200">[ Who we are ]</span></button>
+        <button type="button" class="tab" data-tab="links"><span data-type="16" data-pause="600">[ Links ]</span></button>
       </div>
       <button type="button" class="skip" id="infoSkip">Skip</button>
     </div>
@@ -222,6 +223,7 @@
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
+    <div class="body" data-panel="links" hidden></div>
     <div class="body" data-panel="who" aria-hidden="true" hidden>
       <p data-type="34" data-pause="0">We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
@@ -539,7 +541,7 @@
   const caret = document.createElement("span");
   caret.className = "caret";
   // every typed element becomes a block; blocks are grouped into the two headings and each section
-  const labelBlocks = [], panelBlocks = { what: [], who: [] };
+  const labelBlocks = [], panelBlocks = { what: [], who: [], links: [] };
   infoText.querySelectorAll("[data-type]").forEach(el => {
     const full = el.textContent;
     const node = document.createTextNode("");
@@ -613,7 +615,15 @@
     labelBlocks.forEach(b => b.node.data = b.full);   // headings stay in full
     setTab(t.dataset.tab);
     info.scrollTop = 0;
-    runTyping(panelBlocks[t.dataset.tab], 0, 250);
+    const blocks = panelBlocks[t.dataset.tab];
+    if (!blocks.length) {
+      // nothing to type yet (Links): just leave the blinking line in the empty section
+      cancelAnimationFrame(typeRaf); typeRaf = null; seq = [];
+      infoSkip.classList.remove("show");
+      infoText.querySelector(`[data-panel="${t.dataset.tab}"]`).appendChild(caret);
+      return;
+    }
+    runTyping(blocks, 0, 250);
   }));
 
   // line the info columns up with the HOME and INFO menu labels
