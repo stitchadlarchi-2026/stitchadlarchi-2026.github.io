@@ -22,7 +22,7 @@
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
-  body[data-view="info"] { --bg: var(--white); color-scheme: light; }
+  body:not([data-view="home"]) { --bg: var(--white); color-scheme: light; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--bg); }
   body {
@@ -43,7 +43,7 @@
     opacity: 0; transition: opacity 1.2s ease;
   }
   .nav.show { opacity: 1; }
-  body[data-view="info"] .nav { background: var(--white); }
+  body:not([data-view="home"]) .nav { background: var(--white); }
   .nav .email {
     appearance: none; background: none; border: 0; cursor: pointer;
     font-family: inherit; line-height: inherit;
@@ -156,6 +156,7 @@
 
   /* ---------- pixel scatter transition ---------- */
   #wash { position: fixed; inset: 0; z-index: 20; pointer-events: none; width: 100%; height: 100%; }
+  #wash.fade { transition: opacity .6s ease; opacity: 0; }
 
   @media (max-width: 600px) {
     .logo-wrap { width: calc(100vw - 32px); }
@@ -208,6 +209,8 @@
     <div class="welcome" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
   </article>
 </main>
+
+<main class="page" id="sponsors" hidden aria-label="Sponsors"></main>
 
 <canvas id="wash" aria-hidden="true"></canvas>
 
@@ -446,7 +449,8 @@
   const ctx = canvas.getContext("2d");
   let washing = false;
 
-  function pixelScatter(color, onCovered) {
+  // fadeOut: once covered, fade the pixels away to reveal the new page underneath
+  function pixelScatter(color, onCovered, fadeOut = false) {
     if (reduceMotion) { onCovered(); return; }
     washing = true;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -502,6 +506,11 @@
       if (next < n) { requestAnimationFrame(draw); return; }
       ctx.fillRect(0, 0, W, H);
       onCovered();
+      if (fadeOut) {
+        canvas.classList.add("fade");
+        setTimeout(() => { canvas.classList.remove("fade"); ctx.clearRect(0, 0, W, H); washing = false; }, 650);
+        return;
+      }
       requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; });
     }
     requestAnimationFrame(draw);
@@ -577,7 +586,10 @@
   });
 
   // ================= ROUTING =================
-  const PAGES = { info: { el: info, text: infoText, color: "#ffffff" } };
+  const PAGES = {
+    info:     { el: info, color: "#ffffff" },
+    sponsors: { el: document.getElementById("sponsors"), color: "#ffffff" },
+  };
   let current = "home";
 
   function markNav(name) {
@@ -608,8 +620,10 @@
     const target = PAGES[name] ? name : "home";
     if (target === current || washing) return;
     if (!animate) { setView(target); return; }
-    const color = target === "home" ? "#000000" : PAGES[target].color;
-    pixelScatter(color, () => setView(target));
+    const bgOf = name => name === "home" ? "#000000" : PAGES[name].color;
+    // white page to white page (e.g. Info -> Sponsors): black pixels, then fade to the white page
+    if (bgOf(current) === bgOf(target)) pixelScatter("#000000", () => setView(target), true);
+    else pixelScatter(bgOf(target), () => setView(target));
   }
 
   window.addEventListener("hashchange", () => route(true));
