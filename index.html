@@ -444,7 +444,7 @@
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const cell = Math.max(10, Math.round(Math.min(W, H) / 44));
+    const cell = Math.max(40, Math.round(Math.min(W, H) / 11));   // 4x the old pixel size
     const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
     const n = cols * rows;
 
@@ -474,7 +474,7 @@
       }
     }
     // lone pixels scattered at random before the blobs take over
-    for (let i = 0; i < n * 0.05; i++) {
+    for (let i = 0; i < n * 0.1; i++) {
       const k = (Math.random() * n) | 0;
       times[k] = Math.min(times[k], 120 + SCATTER * Math.sqrt(Math.random()));
     }
