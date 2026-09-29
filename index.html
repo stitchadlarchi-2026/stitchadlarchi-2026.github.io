@@ -139,14 +139,7 @@
   .info .member { justify-items: center; gap: .7em; }
   .info .portrait { display: block; width: calc(var(--pw) * 3px); height: auto; shape-rendering: crispEdges; }   /* 3 screen px per portrait pixel */
   .info .portrait rect { fill: var(--ink); }
-  /* small red square above the head: hover or tap it to show the name */
-  .info .pin {
-    appearance: none; border: 0; padding: 0; cursor: pointer;
-    width: 9px; height: 9px; background: var(--red);
-  }
-  .info .pin:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
-  .info .member figcaption { visibility: hidden; white-space: nowrap; color: var(--red); }
-  .info .member.named figcaption { visibility: visible; }
+  .info .member figcaption { white-space: nowrap; color: var(--red); }
   @media (max-width: 700px) { .info .portrait { width: calc(var(--pw) * 2px); } }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
@@ -249,7 +242,6 @@
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
     <div class="body team" data-panel="team" hidden>
       <figure class="member">
-        <button type="button" class="pin" aria-label="Show name" aria-expanded="false"></button>
         <svg class="portrait" data-portrait="jordan-pipkorn" role="img" aria-label="Pixel portrait of Jordan Pipkorn"></svg>
         <figcaption>Jordan Pipkorn</figcaption>
       </figure>
@@ -712,24 +704,6 @@
     portraitCells.push({ cells, w, h });
   });
   let portraitRaf = null;
-
-  // the red square shows the person's name on hover, keyboard focus or tap (tap again to hide)
-  infoText.querySelectorAll(".member").forEach(m => {
-    const pin = m.querySelector(".pin"), cap = m.querySelector("figcaption");
-    const name = cap.textContent;
-    let pinned = false;
-    const show = () => { if (!m.classList.contains("named")) { m.classList.add("named"); scrambleTo(cap, name); } pin.setAttribute("aria-expanded", "true"); };
-    const hide = () => { if (pinned) return; m.classList.remove("named"); pin.setAttribute("aria-expanded", "false"); };
-    pin.addEventListener("mouseenter", show);
-    pin.addEventListener("mouseleave", hide);
-    pin.addEventListener("focus", show);
-    pin.addEventListener("blur", () => { pinned = false; hide(); });
-    pin.addEventListener("click", e => {
-      e.stopPropagation();
-      pinned = !pinned;
-      if (pinned) show(); else { m.classList.remove("named"); pin.setAttribute("aria-expanded", "false"); }
-    });
-  });
   // pixels appear from the top down with some scatter, over about 1.4 seconds
   function revealPortraits() {
     cancelAnimationFrame(portraitRaf);
@@ -740,6 +714,11 @@
       c.el.style.opacity = reduceMotion ? 1 : 0;
       all.push(c);
     }));
+    // names scramble in alongside the portraits
+    infoText.querySelectorAll(".member figcaption").forEach(cap => {
+      cap.dataset.name = cap.dataset.name || cap.textContent;
+      scrambleTo(cap, cap.dataset.name);
+    });
     if (reduceMotion) return;
     const t0 = performance.now();
     (function step(now) {
