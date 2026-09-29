@@ -35,10 +35,10 @@
   }
   [hidden] { display: none !important; }
 
-  /* ---------- top menu: three equal columns, each label centred in its third ---------- */
+  /* ---------- top menu: four equal columns, each label centred in its third ---------- */
   .nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: repeat(4, 1fr);
     padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
     opacity: 0; transition: opacity 1.2s ease;
   }
@@ -117,6 +117,7 @@
 </head>
 <body data-view="home">
 <nav class="nav" id="nav" aria-label="Main menu">
+  <a href="#home">Home</a>
   <a href="#info">Info</a>
   <a href="#contact">Contact</a>
   <a href="#sponsors">Sponsors</a>
@@ -380,20 +381,24 @@
   const PAGES = { info: { el: info, text: infoText, color: "#ffffff" } };
   let current = "home";
 
-  function setView(name) {
-    current = name;
-    document.body.dataset.view = name;
-    document.querySelector('meta[name="theme-color"]').content = name === "home" ? "#000000" : "#ffffff";
+  function markNav(name) {
     nav.querySelectorAll("a").forEach(a => {
       if (a.getAttribute("href") === "#" + name) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
+  }
+
+  function setView(name) {
+    current = name;
+    document.body.dataset.view = name;
+    document.querySelector('meta[name="theme-color"]').content = name === "home" ? "#000000" : "#ffffff";
+    markNav(name);
     Object.entries(PAGES).forEach(([key, pg]) => {
       pg.el.hidden = key !== name;
       pg.text.classList.remove("show");
     });
     home.hidden = name !== "home";
-    if (name === "home") showLogoAtRest();
+    if (name === "home") playIntro();
     else {
       PAGES[name].el.scrollTop = 0;
       requestAnimationFrame(() => requestAnimationFrame(() => PAGES[name].text.classList.add("show")));
@@ -411,18 +416,20 @@
 
   window.addEventListener("hashchange", () => route(true));
 
-  // Contact and Sponsors pages are not built yet: keep those links inert for now
   nav.querySelectorAll("a").forEach(a => {
     a.addEventListener("click", e => {
       const name = a.getAttribute("href").slice(1);
-      if (!PAGES[name]) e.preventDefault();
+      // already home: just restart the intro
+      if (name === "home" && current === "home") { e.preventDefault(); if (!washing) playIntro(); return; }
+      // Contact and Sponsors pages are not built yet: keep those links inert for now
+      if (name !== "home" && !PAGES[name]) e.preventDefault();
     });
   });
 
   // ================= START =================
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
     if (PAGES[location.hash.slice(1)]) { setView(location.hash.slice(1)); nav.classList.add("show"); }
-    else playIntro();
+    else { markNav("home"); playIntro(); }
   });
 })();
 </script>
