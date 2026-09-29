@@ -220,6 +220,7 @@
       <div class="tabs" role="group" aria-label="Info sections">
         <button type="button" class="tab" data-tab="what" aria-current="true"><span data-type="16" data-pause="200">[ What we do ]</span></button>
         <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="200">[ Who we are ]</span></button>
+        <button type="button" class="tab" data-tab="team"><span data-type="16" data-pause="200">[ Meet the team ]</span></button>
         <button type="button" class="tab" data-tab="links"><span data-type="16" data-pause="600">[ Links ]</span></button>
       </div>
       <button type="button" class="skip" id="infoSkip">Skip</button>
@@ -231,6 +232,7 @@
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
+    <div class="body" data-panel="team" hidden></div>
     <div class="body links" data-panel="links" hidden>
       <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
         <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="0">Instagram</span>
@@ -553,7 +555,13 @@
   const caret = document.createElement("span");
   caret.className = "caret";
   // every typed element becomes a block; blocks are grouped into the two headings and each section
-  const labelBlocks = [], panelBlocks = { what: [], who: [], links: [] };
+  // headings are padded to the same length so their brackets line up: [ LINKS         ]
+  const tabLabels = [...infoText.querySelectorAll(".tab span")];
+  const inner = tabLabels.map(el => el.textContent.replace(/^\[\s*|\s*\]$/g, ""));
+  const widest = Math.max(...inner.map(t => t.length));
+  tabLabels.forEach((el, i) => el.textContent = "[ " + inner[i].padEnd(widest) + " ]");
+
+  const labelBlocks = [], panelBlocks = { what: [], who: [], team: [], links: [] };
   infoText.querySelectorAll("[data-type]").forEach(el => {
     const full = el.textContent;
     const node = document.createTextNode("");
