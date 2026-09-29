@@ -160,7 +160,7 @@
 <nav class="nav" id="nav" aria-label="Main menu">
   <a href="#home">Home</a>
   <a href="#info">Info</a>
-  <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email me</button>
+  <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
 <span class="sr-only" id="emailStatus" role="status" aria-live="polite"></span>
@@ -269,7 +269,7 @@
     });
   });
 
-  // ================= EMAIL ME (copy to clipboard) =================
+  // ================= EMAIL US (copy to clipboard) =================
   const EMAIL = "stitch.adl.archi@gmail.com";
   const emailBtn = document.getElementById("emailBtn");
   const emailStatus = document.getElementById("emailStatus");
@@ -302,7 +302,7 @@
 
   emailBtn.setAttribute("aria-label", "Copy email address " + EMAIL);
   emailBtn.addEventListener("mouseenter", () => { if (!copied) scrambleTo(emailBtn, "Copy email"); });
-  emailBtn.addEventListener("mouseleave", () => { if (!copied) scrambleTo(emailBtn, "Email me"); });
+  emailBtn.addEventListener("mouseleave", () => { if (!copied) scrambleTo(emailBtn, "Email us"); });
   emailBtn.addEventListener("click", () => {
     copyText(EMAIL).then(() => {
       copied = true;
@@ -311,7 +311,7 @@
       clearTimeout(copiedTimer);
       copiedTimer = setTimeout(() => {
         copied = false;
-        scrambleTo(emailBtn, emailBtn.matches(":hover") ? "Copy email" : "Email me");
+        scrambleTo(emailBtn, emailBtn.matches(":hover") ? "Copy email" : "Email us");
       }, 2200);
     }).catch(() => {
       // copying was blocked: show the address so it can be copied by hand
