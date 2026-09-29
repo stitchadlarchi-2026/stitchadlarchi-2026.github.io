@@ -44,6 +44,8 @@
   }
   .nav.show { opacity: 1; }
   body:not([data-view="home"]) .nav { background: var(--white); }
+  /* during a page change the menu bar is see-through, so the pixels fill in behind it too */
+  body.washing .nav { background: transparent; }
   .nav .email {
     appearance: none; background: none; border: 0; cursor: pointer;
     font-family: inherit; line-height: inherit;
@@ -453,6 +455,7 @@
   function pixelScatter(color, onCovered, fadeOut = false) {
     if (reduceMotion) { onCovered(); return; }
     washing = true;
+    document.body.classList.add("washing");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const W = window.innerWidth, H = window.innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
@@ -508,10 +511,10 @@
       onCovered();
       if (fadeOut) {
         canvas.classList.add("fade");
-        setTimeout(() => { canvas.classList.remove("fade"); ctx.clearRect(0, 0, W, H); washing = false; }, 650);
+        setTimeout(() => { canvas.classList.remove("fade"); ctx.clearRect(0, 0, W, H); washing = false; document.body.classList.remove("washing"); }, 650);
         return;
       }
-      requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; });
+      requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; document.body.classList.remove("washing"); });
     }
     requestAnimationFrame(draw);
   }
