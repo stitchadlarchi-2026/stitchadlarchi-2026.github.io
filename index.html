@@ -64,6 +64,23 @@
     letter-spacing: .08em; text-transform: uppercase;
   }
   .hint.show { opacity: 1; }
+  /* top menu: three equal columns, each label centred in its third */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
+    opacity: 0; transition: opacity 1.2s ease;
+  }
+  .nav.show { opacity: 1; }
+  .nav a {
+    justify-self: center;
+    color: var(--red); text-decoration: none;
+    font-size: clamp(11px, 1.2vw, 13px); font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase;
+    padding: 6px 8px; white-space: pre;
+  }
+  .nav a:hover { text-decoration: underline; text-underline-offset: 5px; }
+  .nav a:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   @media (max-width: 600px) {
     .logo-wrap { width: calc(100vw - 32px); }
     .tagline { flex-direction: column; align-items: center; gap: 6px; }
@@ -71,6 +88,11 @@
 </style>
 </head>
 <body>
+<nav class="nav" id="nav" aria-label="Main menu">
+  <a href="#info">Info</a>
+  <a href="#contact">Contact</a>
+  <a href="#sponsors">Sponsors</a>
+</nav>
 <div class="stage" id="stage" title="Click to replay">
   <div id="clusters"></div>
   <div class="logo-wrap">
@@ -131,6 +153,23 @@
   const clustersEl = document.getElementById("clusters");
   const tagline = document.getElementById("tagline");
   const hint = document.getElementById("hint");
+  const nav = document.getElementById("nav");
+
+  // menu labels scramble briefly on hover, echoing the intro
+  nav.querySelectorAll("a").forEach(a => {
+    const label = a.textContent;
+    let timer = null;
+    a.addEventListener("mouseenter", () => {
+      clearInterval(timer);
+      let step = 0;
+      timer = setInterval(() => {
+        step++;
+        const fixed = Math.floor(step / 8 * label.length);
+        a.textContent = label.slice(0, fixed) + rnd(label.length - fixed);
+        if (fixed >= label.length) { clearInterval(timer); a.textContent = label; }
+      }, 35);
+    });
+  });
 
   // timeline (ms)
   const T_TEXT_START = 250;
@@ -224,7 +263,7 @@
       if (v < 1) done = false;
     });
 
-    if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) tagline.classList.add("show");
+    if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) { tagline.classList.add("show"); nav.classList.add("show"); }
     if (done) { setTimeout(() => hint.classList.add("show"), 1500); return; }
     raf = requestAnimationFrame(frame);
   }
@@ -236,6 +275,7 @@
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       cells.forEach(c => c.el.style.opacity = 1);
       tagline.classList.add("show");
+      nav.classList.add("show");
       return;
     }
     raf = requestAnimationFrame(frame);
