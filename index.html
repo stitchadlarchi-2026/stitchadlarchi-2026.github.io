@@ -147,7 +147,7 @@
     .info .welcome { grid-column: 1; font-size: min(calc((100vw - var(--x1, 16px) - 20px) / 10.5), 44px); }
   }
 
-  /* ---------- pixel rain transition ---------- */
+  /* ---------- pixel scatter transition ---------- */
   #wash { position: fixed; inset: 0; z-index: 20; pointer-events: none; width: 100%; height: 100%; }
 
   @media (max-width: 600px) {
@@ -190,10 +190,10 @@
     </div>
     <div class="label" aria-hidden="true" data-type="16" data-pause="600">[ What we do ]</div>
     <div class="body" aria-hidden="true">
-      <p data-type="62" data-pause="520">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
-      <p data-type="62" data-pause="520">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
-      <p data-type="62" data-pause="520">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
-      <p data-type="50" data-pause="1000">Together, these individual threads form a collective body of work.</p>
+      <p data-type="34" data-pause="600">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
+      <p data-type="34" data-pause="600">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
+      <p data-type="34" data-pause="600">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
+      <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
     <div class="welcome" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
   </article>
@@ -428,71 +428,71 @@
     scheduleReplay();
   });
 
-  // ================= PIXEL RAIN =================
-  // White (or black) pixels rain from the top; each column's fill follows its drops down
-  // until the whole screen has been washed to the new colour.
+  // ================= PIXEL SCATTER =================
+  // A few pixels of the new page's colour appear scattered at random, slowly at first.
+  // Each one then grows into a blob, faster and faster, until the blobs join up and
+  // the whole screen is the new background colour.
   const canvas = document.getElementById("wash");
   const ctx = canvas.getContext("2d");
   let washing = false;
 
-  function pixelRain(color, onCovered) {
+  function pixelScatter(color, onCovered) {
     if (reduceMotion) { onCovered(); return; }
     washing = true;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const W = window.innerWidth, H = window.innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
     const cell = Math.max(10, Math.round(Math.min(W, H) / 44));
-    const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell) + 1;
+    const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
+    const n = cols * rows;
 
-    // smooth-ish per-column delay so the wash has a ragged but coherent edge
-    const phase = Math.random() * 10;
-    const columns = Array.from({ length: cols }, (_, i) => {
-      const wave = (Math.sin(i * 0.23 + phase) + Math.sin(i * 0.071 + phase * 2)) * 0.25 + 0.5;
-      const delay = wave * 520 + Math.random() * 260;
-      const dur = 700 + Math.random() * 420;
-      const drops = Array.from({ length: 3 + ((Math.random() * 4) | 0) }, () => ({
-        t0: delay - 380 + Math.random() * (dur * 0.9),
-        dur: 260 + Math.random() * 380,
-        len: 1 + ((Math.random() * 4) | 0),
-      }));
-      return { delay, dur, drops };
-    });
-    const total = Math.max(...columns.map(c => c.delay + c.dur)) + 60;
+    const SCATTER = 1500;    // lone pixels appear over this window, sparse at first then busier
+    const BLOBS_FROM = 800;  // blobs start growing from here...
+    const BLOBS_TO = 1900;   // ...with new blobs starting up until here
+    const END = 3000;        // by now every pixel is filled
+    const GROW = 190;        // blob growth: radius r is reached after GROW * r^0.55 ms (speeds up)
+
+    // seeds: roughly one per 55 cells, their start times weighted towards later (slow, then busier)
+    const seeds = [];
+    const seedCount = Math.max(12, Math.round(n / 55));
+    for (let i = 0; i < seedCount; i++) {
+      seeds.push({ c: (Math.random() * cols) | 0, r: (Math.random() * rows) | 0, t: BLOBS_FROM + (BLOBS_TO - BLOBS_FROM) * Math.pow(Math.random(), 0.6) });
+    }
+    // each cell appears when the nearest-in-time blob reaches it, with a little jitter for ragged edges
+    const times = new Float32Array(n);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let best = END;
+        for (const sd of seeds) {
+          const d = Math.hypot(c - sd.c, r - sd.r);
+          const t = sd.t + GROW * Math.pow(d, 0.55);
+          if (t < best) best = t;
+        }
+        times[r * cols + c] = Math.min(END, best + Math.random() * 140);
+      }
+    }
+    // lone pixels scattered at random before the blobs take over
+    for (let i = 0; i < n * 0.05; i++) {
+      const k = (Math.random() * n) | 0;
+      times[k] = Math.min(times[k], 120 + SCATTER * Math.sqrt(Math.random()));
+    }
+    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => times[a] - times[b]);
+
     const t0 = performance.now();
-    let covered = false;
-
+    let next = 0;
+    ctx.fillStyle = color;
     function draw(now) {
       const t = now - t0;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = color;
-      columns.forEach((c, i) => {
-        const x = i * cell;
-        // settled fill (gravity-like: slow start, quick finish)
-        const p = clamp((t - c.delay) / c.dur);
-        const front = Math.floor(p * p * rows);
-        if (front > 0) { ctx.globalAlpha = 1; ctx.fillRect(x, 0, cell, front * cell); }
-        // falling drops ahead of the fill
-        c.drops.forEach(d => {
-          const q = (t - d.t0) / d.dur;
-          if (q < 0 || q > 1) return;
-          const head = Math.floor(q * q * rows);
-          for (let k = 0; k < d.len; k++) {
-            const r = head - k;
-            if (r < front || r >= rows) continue;
-            ctx.globalAlpha = 1 - k / (d.len + 1);
-            ctx.fillRect(x, r * cell, cell, cell);
-          }
-        });
-      });
-      ctx.globalAlpha = 1;
-      if (t < total) { requestAnimationFrame(draw); return; }
-      ctx.fillRect(0, 0, W, H);
-      if (!covered) {
-        covered = true;
-        onCovered();
-        requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; });
+      while (next < n && times[order[next]] <= t) {
+        const k = order[next++];
+        ctx.fillRect((k % cols) * cell, ((k / cols) | 0) * cell, cell, cell);
       }
+      if (next < n) { requestAnimationFrame(draw); return; }
+      ctx.fillRect(0, 0, W, H);
+      onCovered();
+      requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; });
     }
     requestAnimationFrame(draw);
   }
@@ -587,7 +587,7 @@
     if (target === current || washing) return;
     if (!animate) { setView(target); return; }
     const color = target === "home" ? "#000000" : PAGES[target].color;
-    pixelRain(color, () => setView(target));
+    pixelScatter(color, () => setView(target));
   }
 
   window.addEventListener("hashchange", () => route(true));
