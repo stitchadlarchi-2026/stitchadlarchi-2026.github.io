@@ -1,0 +1,72 @@
+# STITCH exhibition site — nginx serving the built image, plus this stack's own
+# Cloudflare Tunnel. Self-contained per the house convention: one compose
+# project per app, its own tunnel, its own network. Restarting this never
+# touches another stack, even though several share a Cloudflare account.
+#
+#   docker compose -f compose.yaml -p stitch-exhibition --env-file .env up -d --build
+#
+# In normal operation nobody runs that by hand: a push to main on GitHub is the
+# deploy. See deploy/README.md.
+
+name: stitch-exhibition
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    # Loopback only. The tunnel reaches this service by name over the compose
+    # network, so nothing needs to be published at all -- this port exists for
+    # checking the site from the box itself, without going through Cloudflare.
+    ports:
+      - '${WEB_PORT:-127.0.0.1:8094}:80'
+
+    # --- containment --------------------------------------------------------
+    # Thirty containers share this box with other people's production stacks.
+    # A runaway here must not become their outage.
+    mem_limit: 96m
+    memswap_limit: 96m
+    pids_limit: 128
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    # The image is a read-only document root; nginx only needs scratch space.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16m
+      - /var/run:size=1m
+      - /tmp:size=8m
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.8.2
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      web:
+        condition: service_healthy
+    mem_limit: 128m
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

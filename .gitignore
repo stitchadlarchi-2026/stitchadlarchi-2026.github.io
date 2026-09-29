@@ -1,0 +1,8 @@
+# Real secrets. The example file is committed; nothing else here ever is.
+.env
+.env.*
+!.env.example
+
+.DS_Store
+node_modules/
+.claude/worktrees/

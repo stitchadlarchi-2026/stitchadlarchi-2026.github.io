@@ -1,0 +1,120 @@
+# The deploy signal for stitchexhibition.com.
+#
+# This is a deliberately light workflow, and the reason is worth writing down.
+# The house pipeline gates a deploy on a check suite: the poller on the server
+# reads this commit's checks over GitHub's public API and refuses to deploy a
+# commit whose checks did not pass. STITCH is a static information page with no
+# inputs, no accounts and no data, designed by someone who does not work on that
+# server, so Bijin asked for a pipeline that never blocks her. So this workflow
+# reports and never fails: it gives the poller the signal it needs to deploy,
+# and it tells you what it noticed in the job summary rather than in a red X.
+#
+# If something here ever should stop a deploy, delete the `exit 0` from that
+# step. Nothing else needs to change.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look over the site
+        shell: bash {0}          # GitHub sets -e by default; this step must never fail
+        run: |
+          set +e
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import os, re, html.parser, pathlib
+
+          notes, ok = [], []
+          root = pathlib.Path(".")
+          pages = sorted(p for p in root.rglob("*.html") if ".git" not in p.parts)
+
+          if not pages:
+              notes.append("No HTML page found in the repository.")
+
+          class Parse(html.parser.HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.title, self.in_title, self.refs, self.lang = "", False, [], None
+              def handle_starttag(self, tag, attrs):
+                  a = dict(attrs)
+                  if tag == "title": self.in_title = True
+                  if tag == "html": self.lang = a.get("lang")
+                  for k in ("href", "src"):
+                      if a.get(k): self.refs.append(a[k])
+              def handle_endtag(self, tag):
+                  if tag == "title": self.in_title = False
+              def handle_data(self, d):
+                  if self.in_title: self.title += d
+
+          DEFAULTS = {"vite", "react app", "create react app", "next.js", "document", ""}
+
+          for page in pages:
+              text = page.read_text(encoding="utf-8", errors="replace")
+              p = Parse()
+              p.feed(text)
+              title = p.title.strip()
+              ok.append(f"`{page}` — {len(text)//1024} KB")
+
+              if title.lower() in DEFAULTS:
+                  notes.append(f"`{page}` has no real `<title>` (found {title!r}).")
+              if not p.lang:
+                  notes.append(f"`{page}` has no `lang` on `<html>`.")
+
+              # A local href/src that points at a file nobody committed still
+              # renders; it is invisible until someone opens the network panel.
+              for ref in p.refs:
+                  if re.match(r"^(https?:|data:|mailto:|tel:|#|//)", ref):
+                      continue
+                  target = (page.parent / ref.split("?")[0].split("#")[0]).resolve()
+                  try:
+                      target.relative_to(root.resolve())
+                  except ValueError:
+                      continue
+                  if not target.exists():
+                      notes.append(f"`{page}` points at `{ref}`, which is not in the repository.")
+
+          print("## STITCH — site check\n")
+          print("Advisory only. This workflow never fails a deploy.\n")
+          print("### Pages\n")
+          for line in ok: print(f"- {line}")
+          print("\n### Notes\n")
+          if notes:
+              for n in notes: print(f"- {n}")
+          else:
+              print("- Nothing to report.")
+          PY
+          exit 0
+
+      - name: Build the image the server will build
+        shell: bash {0}          # advisory: a broken image is worth knowing about, not worth blocking on
+        run: |
+          set +e
+          out=$(docker build -t stitch-check . 2>&1)
+          code=$?
+          {
+            echo ""
+            echo "### Docker image"
+            echo ""
+            if [ $code -eq 0 ]; then
+              echo "- Builds. This is the same Dockerfile the server uses."
+            else
+              echo "- **Did not build.** The server will deploy the last image that did."
+              echo ""
+              echo '```'
+              echo "$out" | tail -25
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
