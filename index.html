@@ -125,7 +125,15 @@
     row-gap: clamp(28px, 5.5vh, 72px);
     align-items: start;
   }
-  .info .label { white-space: pre; }
+  .info .tabs { display: grid; gap: .45em; justify-items: start; }
+  .info .tab {
+    appearance: none; background: none; border: 0; padding: 0; margin: 0;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left;
+    white-space: pre; color: var(--red); cursor: pointer;
+  }
+  .info .tab[aria-current="true"] { color: var(--ink); cursor: default; }
+  .info .tab:not([aria-current="true"]):hover { text-decoration: underline; text-underline-offset: 4px; }
+  .info .tab:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
   .info .welcome {
     grid-column: 2;
@@ -197,18 +205,26 @@
       <p>Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
       <p>Together, these individual threads form a collective body of work.</p>
       <p>Welcome to STITCH</p>
+      <h2>Who we are</h2>
+      <p>We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
     <div class="col1">
-      <div class="label" aria-hidden="true" data-type="16" data-pause="600">[ What we do ]</div>
+      <div class="tabs" role="group" aria-label="Info sections">
+        <button type="button" class="tab" data-tab="what" aria-current="true"><span data-type="16" data-pause="200">[ What we do ]</span></button>
+        <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="600">[ Who we are ]</span></button>
+      </div>
       <button type="button" class="skip" id="infoSkip">Skip</button>
     </div>
-    <div class="body" aria-hidden="true">
+    <div class="body" data-panel="what" aria-hidden="true">
       <p data-type="34" data-pause="600">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
       <p data-type="34" data-pause="600">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
       <p data-type="34" data-pause="600">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
       <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
     </div>
-    <div class="welcome" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
+    <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
+    <div class="body" data-panel="who" aria-hidden="true" hidden>
+      <p data-type="34" data-pause="0">We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
+    </div>
   </article>
 </main>
 
@@ -522,37 +538,45 @@
   // ================= TYPEWRITER (info page) =================
   const caret = document.createElement("span");
   caret.className = "caret";
-  const typeBlocks = [...infoText.querySelectorAll("[data-type]")].map(el => {
+  // every typed element becomes a block; blocks are grouped into the two headings and each section
+  const labelBlocks = [], panelBlocks = { what: [], who: [] };
+  infoText.querySelectorAll("[data-type]").forEach(el => {
     const full = el.textContent;
     const node = document.createTextNode("");
     el.textContent = "";
     el.appendChild(node);
-    return { el, node, full, speed: +el.dataset.type, pause: +el.dataset.pause };
+    const blk = { el, node, full, speed: +el.dataset.type, pause: +el.dataset.pause };
+    const panel = el.closest("[data-panel]");
+    (panel ? panelBlocks[panel.dataset.panel] : labelBlocks).push(blk);
   });
-  let typeRaf = null;
-
+  const welcomeEl = infoText.querySelector(".welcome");
   const infoSkip = document.getElementById("infoSkip");
-  const LAST = typeBlocks.length - 1;   // "Welcome to STITCH"
+  let typeRaf = null, seq = [];
+
+  // Skip jumps to "Welcome to STITCH" when it is in the sequence, otherwise to the end
+  const skipIndex = blocks => { const i = blocks.findIndex(b => b.el === welcomeEl); return i < 0 ? blocks.length : i; };
 
   function finishTyping() {
     cancelAnimationFrame(typeRaf); typeRaf = null;
-    typeBlocks.forEach(b => b.node.data = b.full);
-    typeBlocks[LAST].el.appendChild(caret);
+    seq.forEach(b => b.node.data = b.full);
+    if (seq.length) seq[seq.length - 1].el.appendChild(caret);
     infoSkip.classList.remove("show");
   }
 
-  // type from block `from` onwards; earlier blocks are shown in full
-  function startTyping(from = 0, firstWait = 450) {
+  // type `blocks` in order from index `from`; earlier ones are shown in full
+  function runTyping(blocks, from = 0, firstWait = 450) {
     cancelAnimationFrame(typeRaf);
-    typeBlocks.forEach((b, i) => b.node.data = i < from ? b.full : "");
-    typeBlocks[from].el.appendChild(caret);
-    infoSkip.classList.toggle("show", from < LAST && !reduceMotion);
+    seq = blocks;
+    const skipAt = skipIndex(blocks);
+    blocks.forEach((b, i) => b.node.data = i < from ? b.full : "");
+    blocks[from].el.appendChild(caret);
+    infoSkip.classList.toggle("show", from < skipAt && !reduceMotion);
     if (reduceMotion) { finishTyping(); return; }
     let bi = from, ci = 0, carry = 0, wait = firstWait, last = performance.now();
     function tick(now) {
       const dt = Math.min(now - last, 64); last = now;
       if (wait > 0) { wait -= dt; typeRaf = requestAnimationFrame(tick); return; }
-      const b = typeBlocks[bi];
+      const b = blocks[bi];
       carry += dt / 1000 * b.speed * (0.55 + Math.random() * 0.9);
       const n = Math.floor(carry); carry -= n;
       if (n > 0) {
@@ -560,15 +584,38 @@
         b.node.data = b.full.slice(0, ci);
       }
       if (ci >= b.full.length) {
-        if (bi === typeBlocks.length - 1) { typeRaf = null; return; }
+        if (bi === blocks.length - 1) { typeRaf = null; infoSkip.classList.remove("show"); return; }
         wait = b.pause; bi++; ci = 0; carry = 0;
-        typeBlocks[bi].el.appendChild(caret);
-        if (bi === LAST) infoSkip.classList.remove("show");
+        blocks[bi].el.appendChild(caret);
+        if (bi >= skipAt) infoSkip.classList.remove("show");
       }
       typeRaf = requestAnimationFrame(tick);
     }
     typeRaf = requestAnimationFrame(tick);
   }
+
+  // ---- sections: What we do / Who we are
+  const tabs = [...infoText.querySelectorAll(".tab")];
+  let currentTab = "what";
+  function setTab(name) {
+    currentTab = name;
+    tabs.forEach(t => t.setAttribute("aria-current", t.dataset.tab === name ? "true" : "false"));
+    infoText.querySelectorAll("[data-panel]").forEach(el => el.hidden = el.dataset.panel !== name);
+  }
+  // opening Info: type both headings, then What we do
+  function startTyping() {
+    setTab("what");
+    runTyping([...labelBlocks, ...panelBlocks.what]);
+  }
+  tabs.forEach(t => t.addEventListener("click", e => {
+    e.stopPropagation();
+    if (t.dataset.tab === currentTab) return;
+    labelBlocks.forEach(b => b.node.data = b.full);   // headings stay in full
+    setTab(t.dataset.tab);
+    info.scrollTop = 0;
+    runTyping(panelBlocks[t.dataset.tab], 0, 250);
+  }));
+
   // line the info columns up with the HOME and INFO menu labels
   const homeLink = nav.querySelector('a[href="#home"]');
   const infoLink = nav.querySelector('a[href="#info"]');
@@ -582,10 +629,11 @@
 
   // click anywhere on the info page to skip to the end
   info.addEventListener("click", e => { if (typeRaf) finishTyping(); });
-  // Skip: show the body text at once, then type "Welcome to STITCH" as normal
+  // Skip: show the text at once, then type "Welcome to STITCH" as normal (if it is part of this section)
   infoSkip.addEventListener("click", e => {
     e.stopPropagation();
-    startTyping(LAST, 250);
+    const k = skipIndex(seq);
+    if (k >= seq.length) finishTyping(); else runTyping(seq, k, 250);
   });
 
   // ================= ROUTING =================
