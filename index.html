@@ -197,21 +197,21 @@
     padding-inline: var(--x1, max(16px, 7vw)) 16px;
     display: grid; gap: clamp(28px, 5.5vh, 72px);
   }
-  .spons .tiers { display: flex; flex-wrap: wrap; gap: 12px; }
+  /* tiers read like the Info headings: [ PLATINUM ]; the selected one is a red block with white text */
+  .spons .tiers { display: flex; flex-wrap: wrap; gap: 1.2em; margin-inline: -.45em; }   /* text lines up under HOME; the red block reaches just past it */
   .spons .tier {
-    appearance: none; margin: 0; border-radius: 0; cursor: pointer;
-    background: var(--white); color: var(--ink); border: 1px solid var(--ink);
-    font: inherit; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-    padding: .75em 1.5em;
-    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    appearance: none; margin: 0; border: 0; border-radius: 0; cursor: pointer;
+    background: transparent; color: var(--ink);
+    font: inherit; letter-spacing: inherit; text-transform: uppercase; white-space: pre;
+    padding: .3em .45em;
+    transition: background-color .15s ease, color .15s ease;
   }
-  .spons .tier:hover { color: var(--red); border-color: var(--red); }
-  .spons .tier[aria-selected="true"] { background: var(--red); border-color: var(--red); color: var(--white); }
+  .spons .tier:hover { color: var(--red); }
+  .spons .tier[aria-selected="true"] { background: var(--red); color: var(--white); }
   .spons .tier:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   @media (max-width: 700px) {
     .spons { padding-inline: var(--x1, 16px); row-gap: 32px; }
-    .spons .tiers { gap: 10px; }
-    .spons .tier { flex: 1 1 0; padding: .75em .5em; }   /* three equal buttons across a phone */
+    .spons .tiers { justify-content: space-between; gap: 6px; }
   }
 
   /* ---------- pixel scatter transition ---------- */
@@ -325,9 +325,9 @@
 <main class="page" id="sponsors" hidden aria-label="Sponsors">
   <section class="spons" id="sponsText">
     <div class="tiers" role="tablist" aria-label="Sponsor tiers">
-      <button type="button" class="tier" role="tab" id="tier-platinum" aria-selected="true" aria-controls="panel-platinum" data-tier="platinum">Platinum</button>
-      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">Gold</button>
-      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">Silver</button>
+      <button type="button" class="tier" role="tab" id="tier-platinum" aria-selected="true" aria-controls="panel-platinum" data-tier="platinum">[ Platinum ]</button>
+      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">[ Gold ]</button>
+      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">[ Silver ]</button>
     </div>
     <div class="tier-panel" role="tabpanel" id="panel-platinum" aria-labelledby="tier-platinum"></div>
     <div class="tier-panel" role="tabpanel" id="panel-gold" aria-labelledby="tier-gold" hidden></div>
