@@ -142,10 +142,11 @@
   .info .member figcaption { white-space: nowrap; color: var(--red); }
   /* phones: three portraits per row, sized to fit the column; long names wrap */
   @media (max-width: 700px) {
-    .info .body.team { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px 12px; }
-    .info .member { width: calc((100% - 24px) / 3); }   /* three per row; a part-filled last row sits in the middle */
+    .info .body.team { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 24px 12px; }
+    .info .member { width: calc((100% - 24px) / 3); }   /* three per row; a part-filled last row starts on the left */
     .info .portrait { width: 100%; height: auto; aspect-ratio: 150 / 162; }
-    .info .member figcaption { white-space: normal; text-align: center; font-size: 10px; line-height: 1.25; }
+    /* names stay on one line: sized so the longest name fits its column */
+    .info .member figcaption { white-space: nowrap; text-align: center; font-size: min(10px, calc((100vw - 2 * var(--x1, 24px) - 24px) / 3 / 10.8)); letter-spacing: .02em; }
   }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
