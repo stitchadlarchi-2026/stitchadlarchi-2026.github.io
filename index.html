@@ -189,6 +189,31 @@
     .info .welcome { grid-column: 1; justify-self: center; font-size: min(calc((100vw - 2 * var(--x1, 16px) - 8px) / 10.5), 44px); }
   }
 
+  /* ---------- sponsors page: tier tabs as square-cornered outlined buttons ---------- */
+  .spons {
+    color: var(--ink); font-family: var(--mono); text-transform: uppercase;
+    font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
+    padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
+    padding-inline: var(--x1, max(16px, 7vw)) 16px;
+    display: grid; gap: clamp(28px, 5.5vh, 72px);
+  }
+  .spons .tiers { display: flex; flex-wrap: wrap; gap: 12px; }
+  .spons .tier {
+    appearance: none; margin: 0; border-radius: 0; cursor: pointer;
+    background: var(--white); color: var(--ink); border: 1px solid var(--ink);
+    font: inherit; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+    padding: .75em 1.5em;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .spons .tier:hover { color: var(--red); border-color: var(--red); }
+  .spons .tier[aria-selected="true"] { background: var(--red); border-color: var(--red); color: var(--white); }
+  .spons .tier:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  @media (max-width: 700px) {
+    .spons { padding-inline: var(--x1, 16px); row-gap: 32px; }
+    .spons .tiers { gap: 10px; }
+    .spons .tier { flex: 1 1 0; padding: .75em .5em; }   /* three equal buttons across a phone */
+  }
+
   /* ---------- pixel scatter transition ---------- */
   #wash { position: fixed; inset: 0; z-index: 20; pointer-events: none; width: 100%; height: 100%; }
   #wash.fade { transition: opacity .6s ease; opacity: 0; }
@@ -297,7 +322,18 @@
   </article>
 </main>
 
-<main class="page" id="sponsors" hidden aria-label="Sponsors"></main>
+<main class="page" id="sponsors" hidden aria-label="Sponsors">
+  <section class="spons" id="sponsText">
+    <div class="tiers" role="tablist" aria-label="Sponsor tiers">
+      <button type="button" class="tier" role="tab" id="tier-platinum" aria-selected="true" aria-controls="panel-platinum" data-tier="platinum">Platinum</button>
+      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">Gold</button>
+      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">Silver</button>
+    </div>
+    <div class="tier-panel" role="tabpanel" id="panel-platinum" aria-labelledby="tier-platinum"></div>
+    <div class="tier-panel" role="tabpanel" id="panel-gold" aria-labelledby="tier-gold" hidden></div>
+    <div class="tier-panel" role="tabpanel" id="panel-silver" aria-labelledby="tier-silver" hidden></div>
+  </section>
+</main>
 
 <canvas id="wash" aria-hidden="true"></canvas>
 
@@ -1160,8 +1196,10 @@
   function alignInfo() {
     const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
     const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
-    infoText.style.setProperty("--x1", x1 + "px");
-    infoText.style.setProperty("--c1", (x2 - x1) + "px");
+    [infoText, document.getElementById("sponsText")].forEach(el => {
+      el.style.setProperty("--x1", x1 + "px");
+      el.style.setProperty("--c1", (x2 - x1) + "px");
+    });
   }
   window.addEventListener("resize", alignInfo);
 
@@ -1172,6 +1210,26 @@
     e.stopPropagation();
     const k = skipIndex(seq);
     if (k >= seq.length) finishTyping(); else runTyping(seq, k, 250);
+  });
+
+  // ================= SPONSOR TIERS =================
+  // one tier selected at a time: selected = red background, white text
+  const tierTabs = [...document.querySelectorAll(".spons .tier")];
+  function selectTier(tab) {
+    tierTabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+  }
+  tierTabs.forEach((t, i) => {
+    t.addEventListener("click", () => selectTier(t));
+    t.addEventListener("keydown", e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const next = tierTabs[(i + (e.key === "ArrowRight" ? 1 : tierTabs.length - 1)) % tierTabs.length];
+      selectTier(next); next.focus();
+    });
   });
 
   // ================= ROUTING =================
@@ -1201,6 +1259,7 @@
     else {
       PAGES[name].el.scrollTop = 0;
       if (name === "info") { alignInfo(); startTyping(); }
+      if (name === "sponsors") alignInfo();
     }
   }
 
