@@ -140,7 +140,13 @@
   .info .portrait { display: block; width: 150px; height: 162px; shape-rendering: crispEdges; }   /* same frame for everyone; shoulders sit on the bottom edge */
   .info .portrait rect { fill: var(--ink); }
   .info .member figcaption { white-space: nowrap; color: var(--red); }
-  @media (max-width: 700px) { .info .portrait { width: 100px; height: 108px; } }
+  /* phones: three portraits per row, sized to fit the column; long names wrap */
+  @media (max-width: 700px) {
+    .info .body.team { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 10px; }
+    .info .member { width: 100%; }
+    .info .portrait { width: 100%; height: auto; aspect-ratio: 150 / 162; }
+    .info .member figcaption { white-space: normal; text-align: center; font-size: 10px; line-height: 1.25; }
+  }
   .info .links { display: grid; gap: .9em; justify-items: start; }
   .info .ilink {
     display: inline-flex; align-items: center; gap: .75em;
