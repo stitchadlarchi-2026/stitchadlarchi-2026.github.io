@@ -195,15 +195,18 @@
     font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
     padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
     padding-inline: var(--x1, max(16px, 7vw)) 16px;
-    display: grid; gap: clamp(28px, 5.5vh, 72px);
+    /* same two columns as Info: tiers under HOME, sponsors under INFO */
+    display: grid; grid-template-columns: var(--c1, minmax(0, 1fr)) minmax(0, 1fr);
+    column-gap: 0; row-gap: clamp(28px, 5.5vh, 72px); align-items: start;
   }
+  .spons .tier-panel { grid-column: 2; grid-row: 1; }
   /* tiers read like the Info headings: [ PLATINUM ]; the selected one is a red block with white text */
-  .spons .tiers { display: flex; flex-wrap: wrap; gap: 1.2em; margin-inline: -.45em; }   /* text lines up under HOME; the red block reaches just past it */
+  .spons .tiers { display: grid; justify-items: start; gap: 0; margin: -.22em -.45em 0; }   /* stacked like the Info headings; text lines up under HOME */
   .spons .tier {
     appearance: none; margin: 0; border: 0; border-radius: 0; cursor: pointer;
     background: transparent; color: var(--ink);
     font: inherit; letter-spacing: inherit; text-transform: uppercase; white-space: pre;
-    padding: .3em .45em;
+    padding: .22em .45em;
     transition: background-color .15s ease, color .15s ease;
   }
   .spons .tier:hover { color: var(--red); }
@@ -211,7 +214,8 @@
   .spons .tier:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   @media (max-width: 700px) {
     .spons { padding-inline: var(--x1, 16px); row-gap: 32px; }
-    .spons .tiers { justify-content: space-between; gap: 6px; }
+    .spons { grid-template-columns: minmax(0, 1fr); }
+    .spons .tier-panel { grid-column: 1; grid-row: auto; }
   }
 
   /* ---------- pixel scatter transition ---------- */
@@ -326,8 +330,8 @@
   <section class="spons" id="sponsText">
     <div class="tiers" role="tablist" aria-label="Sponsor tiers">
       <button type="button" class="tier" role="tab" id="tier-platinum" aria-selected="true" aria-controls="panel-platinum" data-tier="platinum">[ Platinum ]</button>
-      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">[ Gold ]</button>
-      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">[ Silver ]</button>
+      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">[ Gold     ]</button>
+      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">[ Silver   ]</button>
     </div>
     <div class="tier-panel" role="tabpanel" id="panel-platinum" aria-labelledby="tier-platinum"></div>
     <div class="tier-panel" role="tabpanel" id="panel-gold" aria-labelledby="tier-gold" hidden></div>
