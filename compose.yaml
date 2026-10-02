@@ -50,6 +50,37 @@ services:
       start_period: 5s
       retries: 3
 
+  # Counts page views and clicks for the monitoring page. nginx forwards the
+  # page's beacons here over the compose network; the counts are read by the
+  # host collector on loopback. nginx does not depend on this service: if it is
+  # down, beacons get a 204 and the page is unaffected. See deploy/usage/.
+  usage:
+    build:
+      context: deploy/usage
+    restart: unless-stopped
+    ports:
+      - '${USAGE_PORT:-127.0.0.1:9094}:9090'
+    mem_limit: 96m
+    memswap_limit: 96m
+    pids_limit: 64
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:9090/usage >/dev/null 2>&1 || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
   cloudflared:
     image: cloudflare/cloudflared:2026.8.2
     restart: unless-stopped

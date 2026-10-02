@@ -31,8 +31,9 @@ GitHub credential that can write here. The server pulls; GitHub never pushes.
 | Path | What it is |
 |---|---|
 | `Dockerfile` | Bakes the site into `nginx:1.29-alpine`. Copies the whole repo, then strips the infrastructure back out, so new pages and assets ship without anyone editing it |
-| `compose.yaml` | The stack: `web` (nginx) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
-| `deploy/nginx.conf` | Security headers, gzip, cache policy, and the `www` → apex redirect |
+| `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
+| `deploy/nginx.conf` | Security headers, gzip, cache policy, the `www` → apex redirect, and the usage beacon |
+| `deploy/usage/` | The usage counters. `beacon.js` is added to every page by nginx as it serves it, so `index.html` never carries it. It sends one word per page view or click: no cookie, no storage, no identifier. `server.mjs` counts the words and serves the totals on `127.0.0.1:9094` for the monitoring page. If it is down, the page is unaffected |
 | `deploy/provision-tunnel.sh` | Creates or reuses the Cloudflare tunnel and DNS. Idempotent; safe to re-run |
 | `.env.example` | The variable names. The real `.env` lives only on the server and is gitignored |
 
