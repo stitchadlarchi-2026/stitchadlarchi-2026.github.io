@@ -86,6 +86,9 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
+      # QUIC (UDP) edge connections time out and redial ~10 times an hour on
+      # this network; HTTP/2 over TCP holds them.
+      TUNNEL_TRANSPORT_PROTOCOL: http2
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
     depends_on:
       web:
