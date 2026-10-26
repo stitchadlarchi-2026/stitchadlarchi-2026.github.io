@@ -38,7 +38,7 @@
   /* ---------- top menu: four equal columns, each label centred in its third ---------- */
   .nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(5, 1fr);
     padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
     opacity: 0; transition: opacity 1.2s ease;
   }
@@ -150,14 +150,13 @@
     /* names stay on one line: sized so the longest name fits its column */
     .info .member figcaption { white-space: nowrap; text-align: center; font-size: min(10px, calc((100vw - 2 * var(--x1, 24px) - 24px) / 3 / 10.8)); letter-spacing: .02em; }
   }
-  .info .links { display: grid; gap: .9em; justify-items: start; }
-  .info .ilink {
+  .ilink {
     display: inline-flex; align-items: center; gap: .75em;
     color: var(--ink); text-decoration: none;
   }
-  .info .ilink .sq { width: .8em; height: .8em; background: var(--red); flex: none; }
-  .info .ilink:hover span:last-child { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
-  .info .ilink:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .ilink .sq { width: .8em; height: .8em; background: var(--red); flex: none; }
+  .ilink:hover span:last-child { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .ilink:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .info .tab:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
   .info .welcome {
@@ -190,6 +189,16 @@
     .info .skip:not(.show) { display: none; }
     .info .welcome { grid-column: 1; justify-self: center; font-size: min(calc((100vw - 2 * var(--x1, 16px) - 8px) / 10.5), 44px); }
   }
+
+  /* ---------- links page: same frame and type as Sponsors ---------- */
+  .lnks {
+    color: var(--ink); font-family: var(--mono); text-transform: uppercase;
+    font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
+    padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
+    padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
+    display: grid; gap: .9em; justify-items: start; align-content: start;
+  }
+  @media (max-width: 700px) { .lnks { padding-inline: var(--x1, 16px); } }
 
   /* ---------- sponsors page: one list, split by tier, logos in left-aligned rows ---------- */
   .spons {
@@ -258,6 +267,7 @@
 <nav class="nav" id="nav" aria-label="Main menu">
   <a href="#home">Home</a>
   <a href="#info">Info</a>
+  <a href="#links">Links</a>
   <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
@@ -292,8 +302,7 @@
       <div class="tabs" role="group" aria-label="Info sections">
         <button type="button" class="tab" data-tab="what" aria-current="true"><span data-type="16" data-pause="200">[ What we do ]</span></button>
         <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="200">[ Who we are ]</span></button>
-        <button type="button" class="tab" data-tab="team"><span data-type="16" data-pause="200">[ Meet the team ]</span></button>
-        <button type="button" class="tab" data-tab="links"><span data-type="16" data-pause="600">[ Links ]</span></button>
+        <button type="button" class="tab" data-tab="team"><span data-type="16" data-pause="600">[ Meet the team ]</span></button>
       </div>
       <button type="button" class="skip" id="infoSkip">Skip</button>
     </div>
@@ -334,21 +343,25 @@
         <figcaption>Matthew Birchmore</figcaption>
       </figure>
     </div>
-    <div class="body links" data-panel="links" hidden>
-      <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
-        <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="150">Instagram</span>
-      </a>
-      <a class="ilink" href="https://events.humanitix.com/stitched2026" target="_blank" rel="noopener" aria-label="Gala tickets (opens in a new tab)">
-        <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="150">Gala</span>
-      </a>
-      <a class="ilink" href="https://noahtyley.pixieset.com/stitchannualgala/" target="_blank" rel="noopener" aria-label="Gala photos (opens in a new tab)">
-        <span class="sq" aria-hidden="true"></span><span data-type="34" data-pause="0">GALA PHOTOS</span>
-      </a>
-    </div>
     <div class="body" data-panel="who" aria-hidden="true" hidden>
       <p data-type="34" data-pause="0">We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
   </article>
+</main>
+
+<main class="page" id="links" hidden aria-label="Links">
+  <section class="lnks" id="linksText">
+    <h1 class="sr-only">Links</h1>
+    <a class="ilink" href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener" aria-label="Instagram (opens in a new tab)">
+      <span class="sq" aria-hidden="true"></span><span class="lt">Instagram</span>
+    </a>
+    <a class="ilink" href="https://events.humanitix.com/stitched2026" target="_blank" rel="noopener" aria-label="Gala tickets (opens in a new tab)">
+      <span class="sq" aria-hidden="true"></span><span class="lt">Gala</span>
+    </a>
+    <a class="ilink" href="https://noahtyley.pixieset.com/stitchannualgala/" target="_blank" rel="noopener" aria-label="Gala photos (opens in a new tab)">
+      <span class="sq" aria-hidden="true"></span><span class="lt">GALA PHOTOS</span>
+    </a>
+  </section>
 </main>
 
 <main class="page" id="sponsors" hidden aria-label="Sponsors">
@@ -702,7 +715,7 @@
   const widest = Math.max(...inner.map(t => t.length));
   tabLabels.forEach((el, i) => el.textContent = "[ " + inner[i].padEnd(widest) + " ]");
 
-  const labelBlocks = [], panelBlocks = { what: [], who: [], team: [], links: [] };
+  const labelBlocks = [], panelBlocks = { what: [], who: [], team: [] };
   infoText.querySelectorAll("[data-type]").forEach(el => {
     const full = el.textContent;
     const node = document.createTextNode("");
@@ -1248,7 +1261,7 @@
   function alignInfo() {
     const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
     const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
-    [infoText, document.getElementById("sponsText")].forEach(el => {
+    [infoText, document.getElementById("sponsText"), document.getElementById("linksText")].forEach(el => {
       el.style.setProperty("--x1", x1 + "px");
       el.style.setProperty("--c1", (x2 - x1) + "px");
     });
@@ -1265,42 +1278,57 @@
   });
 
   // ================= SPONSORS =================
-  // titles type out together when the page opens, each with its own caret
-  const sponsTitles = [...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h).map(el => {
-    const full = el.textContent, node = document.createTextNode(full);
-    el.textContent = ""; el.appendChild(node);
-    return { el, node, full };
-  });
-  let titleRaf = null;
-  function typeSponsorTitles() {
-    cancelAnimationFrame(titleRaf);
-    sponsTitles.forEach(t => { t.el.querySelector(".caret")?.remove(); t.node.data = reduceMotion ? t.full : ""; });
-    if (reduceMotion) return;
-    const SPEED = 16, START = 450, HOLD = 700;   // chars per second, delay before typing, caret linger
-    sponsTitles.forEach(t => {
-      t.ci = 0; t.carry = 0; t.doneAt = null;
-      t.caret = document.createElement("span"); t.caret.className = "caret";
-      t.el.appendChild(t.caret);
+  // page titles type out together when a page opens, each with its own caret
+  // together = all at once (Sponsors titles); otherwise one after another (Links)
+  function makeTyper(els, together = true) {
+    const items = els.map(el => {
+      const full = el.textContent, node = document.createTextNode(full);
+      el.textContent = ""; el.appendChild(node);
+      return { el, node, full };
     });
-    let wait = START, last = performance.now();
-    (function tick(now) {
-      const dt = Math.min(now - last, 64); last = now;
-      if (wait > 0) { wait -= dt; titleRaf = requestAnimationFrame(tick); return; }
-      let busy = false;
-      sponsTitles.forEach(t => {
-        if (t.ci < t.full.length) {
-          t.carry += dt / 1000 * SPEED * (0.55 + Math.random() * 0.9);
-          const n = Math.floor(t.carry); t.carry -= n;
-          if (n > 0) { t.ci = Math.min(t.full.length, t.ci + n); t.node.data = t.full.slice(0, t.ci); }
+    const caretFor = t => { t.caret = document.createElement("span"); t.caret.className = "caret"; t.el.appendChild(t.caret); };
+    let raf = null;
+    return function start() {
+      cancelAnimationFrame(raf);
+      items.forEach(t => { t.caret?.remove(); t.caret = null; t.node.data = reduceMotion ? t.full : ""; });
+      if (reduceMotion) return;
+      const SPEED = 16, START = 450, HOLD = 700, GAP = 150;   // chars/sec, delay before typing, caret linger, pause between lines
+      items.forEach(t => { t.ci = 0; t.carry = 0; t.doneAt = null; });
+      (together ? items : items.slice(0, 1)).forEach(caretFor);
+      let cur = 0, wait = START, last = performance.now();
+      const typeOne = (t, dt) => {
+        t.carry += dt / 1000 * SPEED * (0.55 + Math.random() * 0.9);
+        const n = Math.floor(t.carry); t.carry -= n;
+        if (n > 0) { t.ci = Math.min(t.full.length, t.ci + n); t.node.data = t.full.slice(0, t.ci); }
+      };
+      (function tick(now) {
+        const dt = Math.min(now - last, 64); last = now;
+        if (wait > 0) { wait -= dt; raf = requestAnimationFrame(tick); return; }
+        let busy = false;
+        if (together) {
+          items.forEach(t => {
+            if (t.ci < t.full.length) { typeOne(t, dt); busy = true; }
+            else if (t.caret) {
+              t.doneAt ??= now;
+              if (now - t.doneAt > HOLD) { t.caret.remove(); t.caret = null; } else busy = true;
+            }
+          });
+        } else {
+          const t = items[cur];
           busy = true;
-        } else if (t.caret) {
-          t.doneAt ??= now;
-          if (now - t.doneAt > HOLD) { t.caret.remove(); t.caret = null; } else busy = true;
+          if (t.ci < t.full.length) typeOne(t, dt);
+          else if (cur < items.length - 1) { t.caret.remove(); t.caret = null; cur++; caretFor(items[cur]); wait = GAP; }
+          else {
+            t.doneAt ??= now;
+            if (now - t.doneAt > HOLD) { t.caret.remove(); t.caret = null; busy = false; }
+          }
         }
-      });
-      titleRaf = busy ? requestAnimationFrame(tick) : null;
-    })(last);
+        raf = busy ? requestAnimationFrame(tick) : null;
+      })(last);
+    };
   }
+  const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
+  const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
 
   // In kind drop-down
   spons_drop: {
@@ -1326,6 +1354,7 @@
   // ================= ROUTING =================
   const PAGES = {
     info:     { el: info, color: "#ffffff" },
+    links:    { el: document.getElementById("links"), color: "#ffffff" },
     sponsors: { el: document.getElementById("sponsors"), color: "#ffffff" },
   };
   let current = "home";
@@ -1351,6 +1380,7 @@
       PAGES[name].el.scrollTop = 0;
       if (name === "info") { alignInfo(); startTyping(); }
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
+      if (name === "links") { alignInfo(); typeLinks(); }
     }
   }
 
