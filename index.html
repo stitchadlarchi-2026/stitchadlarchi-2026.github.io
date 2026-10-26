@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>STITCH — Adelaide University Graduate Exhibition 2026</title>
+<title>STITCH - Adelaide University Graduate Exhibition 2026</title>
 <meta name="description" content="STITCH, the inaugural graduate exhibition of Adelaide University. 4 December 2026.">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 7'%3E%3Cpath fill='%23C82B29' d='M1 0h3v1H1zM0 1h1v2H0zM4 1h1v1H4zM1 3h3v1H1zM4 4h1v2H4zM0 5h1v1H0zM1 6h3v1H1z'/%3E%3C/svg%3E">
@@ -191,33 +191,53 @@
     .info .welcome { grid-column: 1; justify-self: center; font-size: min(calc((100vw - 2 * var(--x1, 16px) - 8px) / 10.5), 44px); }
   }
 
-  /* ---------- sponsors page: tier tabs as square-cornered outlined buttons ---------- */
+  /* ---------- sponsors page: one list, split by tier, logos in left-aligned rows ---------- */
   .spons {
     color: var(--ink); font-family: var(--mono); text-transform: uppercase;
     font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
     padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
-    padding-inline: var(--x1, max(16px, 7vw)) 16px;
-    /* same two columns as Info: tiers under HOME, sponsors under INFO */
-    display: grid; grid-template-columns: var(--c1, minmax(0, 1fr)) minmax(0, 1fr);
-    column-gap: 0; row-gap: clamp(28px, 5.5vh, 72px); align-items: start;
+    padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
+    display: grid; row-gap: clamp(40px, 7vh, 88px); align-content: start;
   }
-  .spons .tier-panel { grid-column: 2; grid-row: 1; }
-  /* tiers read like the Info headings: [ PLATINUM ]; the selected one is a red block with white text */
-  .spons .tiers { display: grid; justify-items: start; gap: 0; margin: -.22em -.45em 0; }   /* stacked like the Info headings; text lines up under HOME */
-  .spons .tier {
-    appearance: none; margin: 0; border: 0; border-radius: 0; cursor: pointer;
-    background: transparent; color: var(--ink);
-    font: inherit; letter-spacing: inherit; text-transform: uppercase; white-space: pre;
-    padding: .22em .45em;
-    transition: background-color .15s ease, color .15s ease;
+  .spons .tier-group { display: grid; row-gap: clamp(18px, 3vh, 32px); }
+  .spons .tier-group:not(:has(img)) { display: none; }   /* a tier with no logos yet stays hidden */
+  .spons h2 { margin: 0; font: inherit; font-weight: 500; letter-spacing: .08em; }
+  .spons .logos {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start;
+    gap: clamp(28px, 4vh, 48px) clamp(36px, 4.5vw, 72px);
   }
-  .spons .tier:hover { color: var(--red); }
-  .spons .tier[aria-selected="true"] { background: var(--red); color: var(--white); }
-  .spons .tier:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  /* optical sizing: height shrinks with the square root of the aspect ratio (--ar, set
+     by script once each image loads), so long wordmarks and square badges carry
+     roughly the same visual weight */
+  .spons .logos img {
+    display: block; width: auto; max-width: 100%;
+    height: calc(clamp(40px, 4.2vw, 60px) * 1.3 / sqrt(var(--ar, 2)));
+  }
+  /* In kind: the title is a + button that drops the logos down */
+  .spons .tier-group:has(.drop-body) { row-gap: 0; }
+  .spons .drop {
+    appearance: none; background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer;
+    display: inline-flex; align-items: center; gap: .8em;
+  }
+  .spons .drop:hover { color: var(--red); }
+  .spons .drop:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  .spons .drop .plus { display: inline-block; line-height: 1; transition: transform .3s ease; }
+  .spons .drop[aria-expanded="true"] .plus { transform: rotate(45deg); }
+  .spons .drop-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s ease; }
+  .spons .drop-body > div { overflow: hidden; min-height: 0; }
+  .spons .drop-body .logos { padding-top: clamp(18px, 3vh, 32px); }
+  .spons .drop-body.open { grid-template-rows: 1fr; }
+  /* logos fall in one after another */
+  .spons .drop-body li { opacity: 0; transform: translateY(-12px); transition: opacity .35s ease, transform .35s ease; }
+  .spons .drop-body.open li { opacity: 1; transform: none; transition-delay: calc(var(--i, 0) * 90ms + 120ms); }
+  .spons .logos a { display: block; transition: opacity .15s ease; }
+  .spons .logos a:hover { opacity: .6; }
+  .spons .logos a:focus-visible { outline: 1px solid var(--red); outline-offset: 6px; }
   @media (max-width: 700px) {
-    .spons { padding-inline: var(--x1, 16px); row-gap: 32px; }
-    .spons { grid-template-columns: minmax(0, 1fr); }
-    .spons .tier-panel { grid-column: 1; grid-row: auto; }
+    .spons { padding-inline: var(--x1, 16px); row-gap: 40px; }
+    .spons .logos { gap: 28px 32px; }
   }
 
   /* ---------- pixel scatter transition ---------- */
@@ -330,14 +350,37 @@
 
 <main class="page" id="sponsors" hidden aria-label="Sponsors">
   <section class="spons" id="sponsText">
-    <div class="tiers" role="tablist" aria-label="Sponsor tiers">
-      <button type="button" class="tier" role="tab" id="tier-platinum" aria-selected="true" aria-controls="panel-platinum" data-tier="platinum">[ Platinum ]</button>
-      <button type="button" class="tier" role="tab" id="tier-gold" aria-selected="false" aria-controls="panel-gold" data-tier="gold" tabindex="-1">[ Gold     ]</button>
-      <button type="button" class="tier" role="tab" id="tier-silver" aria-selected="false" aria-controls="panel-silver" data-tier="silver" tabindex="-1">[ Silver   ]</button>
-    </div>
-    <div class="tier-panel" role="tabpanel" id="panel-platinum" aria-labelledby="tier-platinum"></div>
-    <div class="tier-panel" role="tabpanel" id="panel-gold" aria-labelledby="tier-gold" hidden></div>
-    <div class="tier-panel" role="tabpanel" id="panel-silver" aria-labelledby="tier-silver" hidden></div>
+    <section class="tier-group" aria-labelledby="h-platinum">
+      <h2 id="h-platinum">Platinum</h2>
+      <ul class="logos">
+        <li><a href="https://swanburypenglase.com/" target="_blank" rel="noopener" aria-label="Swanbury Penglase (opens in a new tab)"><img src="sponsors/swanbury-penglase.svg" alt="Swanbury Penglase"></a></li>
+      </ul>
+    </section>
+    <section class="tier-group" aria-labelledby="h-gold">
+      <h2 id="h-gold">Gold</h2>
+      <ul class="logos">
+        <li><a href="https://loandcointeriors.com.au/" target="_blank" rel="noopener" aria-label="LO&amp;CO (opens in a new tab)"><img src="sponsors/lo-and-co.png" alt="LO&amp;CO"></a></li>
+      </ul>
+    </section>
+    <section class="tier-group" aria-labelledby="h-silver">
+      <h2 id="h-silver">Silver</h2>
+      <ul class="logos">
+      </ul>
+    </section>
+    <section class="tier-group" aria-labelledby="h-inkind">
+      <h2 id="h-inkind"><button type="button" class="drop" aria-expanded="false" aria-controls="inkind-logos"><span class="title">In kind</span><span class="plus" aria-hidden="true">+</span></button></h2>
+      <div class="drop-body" id="inkind-logos" inert>
+        <div>
+          <ul class="logos">
+            <li><a href="https://alturacoffee.com.au/" target="_blank" rel="noopener" aria-label="Altura Coffee (opens in a new tab)"><img src="sponsors/altura-coffee.png" alt="Altura Coffee"></a></li>
+            <li><a href="https://www.instagram.com/bunsocoffeecart/" target="_blank" rel="noopener" aria-label="Bunso Coffee (opens in a new tab)"><img src="sponsors/bunso-coffee.png" alt="Bunso Coffee"></a></li>
+            <li><a href="https://altdairyco.com/au" target="_blank" rel="noopener" aria-label="The Alternative Dairy Co (opens in a new tab)"><img src="sponsors/alternative-dairy-co.png" alt="The Alternative Dairy Co"></a></li>
+            <li><a href="https://thomasfarms.com.au/" target="_blank" rel="noopener" aria-label="Thomas Farms (opens in a new tab)"><img src="sponsors/thomas-farms.png" alt="Thomas Farms"></a></li>
+            <li><a href="https://bracegirdles.com.au" target="_blank" rel="noopener" aria-label="Bracegirdles (opens in a new tab)"><img src="sponsors/bracegirdles.png" alt="Bracegirdles"></a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
   </section>
 </main>
 
@@ -1218,25 +1261,64 @@
     if (k >= seq.length) finishTyping(); else runTyping(seq, k, 250);
   });
 
-  // ================= SPONSOR TIERS =================
-  // one tier selected at a time: selected = red background, white text
-  const tierTabs = [...document.querySelectorAll(".spons .tier")];
-  function selectTier(tab) {
-    tierTabs.forEach(t => {
-      const on = t === tab;
-      t.setAttribute("aria-selected", on ? "true" : "false");
-      t.tabIndex = on ? 0 : -1;
-      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+  // ================= SPONSORS =================
+  // titles type out together when the page opens, each with its own caret
+  const sponsTitles = [...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h).map(el => {
+    const full = el.textContent, node = document.createTextNode(full);
+    el.textContent = ""; el.appendChild(node);
+    return { el, node, full };
+  });
+  let titleRaf = null;
+  function typeSponsorTitles() {
+    cancelAnimationFrame(titleRaf);
+    sponsTitles.forEach(t => { t.el.querySelector(".caret")?.remove(); t.node.data = reduceMotion ? t.full : ""; });
+    if (reduceMotion) return;
+    const SPEED = 16, START = 450, HOLD = 700;   // chars per second, delay before typing, caret linger
+    sponsTitles.forEach(t => {
+      t.ci = 0; t.carry = 0; t.doneAt = null;
+      t.caret = document.createElement("span"); t.caret.className = "caret";
+      t.el.appendChild(t.caret);
+    });
+    let wait = START, last = performance.now();
+    (function tick(now) {
+      const dt = Math.min(now - last, 64); last = now;
+      if (wait > 0) { wait -= dt; titleRaf = requestAnimationFrame(tick); return; }
+      let busy = false;
+      sponsTitles.forEach(t => {
+        if (t.ci < t.full.length) {
+          t.carry += dt / 1000 * SPEED * (0.55 + Math.random() * 0.9);
+          const n = Math.floor(t.carry); t.carry -= n;
+          if (n > 0) { t.ci = Math.min(t.full.length, t.ci + n); t.node.data = t.full.slice(0, t.ci); }
+          busy = true;
+        } else if (t.caret) {
+          t.doneAt ??= now;
+          if (now - t.doneAt > HOLD) { t.caret.remove(); t.caret = null; } else busy = true;
+        }
+      });
+      titleRaf = busy ? requestAnimationFrame(tick) : null;
+    })(last);
+  }
+
+  // In kind drop-down
+  spons_drop: {
+    const btn = document.querySelector(".spons .drop");
+    if (!btn) break spons_drop;
+    const body = document.getElementById(btn.getAttribute("aria-controls"));
+    body.querySelectorAll("li").forEach((li, i) => li.style.setProperty("--i", i));
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      body.classList.toggle("open", open);
+      body.inert = !open;
     });
   }
-  tierTabs.forEach((t, i) => {
-    t.addEventListener("click", () => selectTier(t));
-    t.addEventListener("keydown", e => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const next = tierTabs[(i + (e.key === "ArrowRight" ? 1 : tierTabs.length - 1)) % tierTabs.length];
-      selectTier(next); next.focus();
-    });
+
+  // logos: record each one's aspect ratio for the optical sizing in CSS
+  document.querySelectorAll(".spons .logos img").forEach(img => {
+    const set = () => img.naturalWidth && img.style.setProperty("--ar", (img.naturalWidth / img.naturalHeight).toFixed(3));
+    if (img.complete) set(); else img.addEventListener("load", set);
   });
+
 
   // ================= ROUTING =================
   const PAGES = {
@@ -1265,7 +1347,7 @@
     else {
       PAGES[name].el.scrollTop = 0;
       if (name === "info") { alignInfo(); startTyping(); }
-      if (name === "sponsors") alignInfo();
+      if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
     }
   }
 
