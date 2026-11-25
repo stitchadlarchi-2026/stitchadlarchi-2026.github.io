@@ -7,7 +7,8 @@
     "project posters (PDF or image) and project booklets (PDF), up to 1 GB each",
     "optional LinkedIn URL and place of origin",
     "project titles and overviews (up to 150 words)",
-    "keyed HMAC of client IP addresses, in memory only, for rate limits"
+    "keyed HMAC of client IP addresses, in memory only, for rate limits",
+    "Student Directory opt-in, committee approvals, and small web copies of headshots and image posters (public only once approved)"
   ],
   "public_hostnames": [
     "stitchexhibition.com",
@@ -18,5 +19,6 @@
   "previous": "Lane A from 2026-09-29 to 2026-11-25, when the site took no input",
   "skill": "cybersecurity",
   "storage": "server volumes submissions-data and submissions-files; R2 bucket stitch-uploads (NCH account) until the deletion date",
-  "updated": "2026-11-26"
+  "updated": "2026-11-26",
+  "public_routes": ["/_s/directory.json", "/_s/media/<id>/<kind>.<ext> (edge-cached 5 min)", "/_s/poster/<id> (302 to a 15-minute presigned R2 GET)"]
 }

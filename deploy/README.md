@@ -154,6 +154,26 @@ answer 404. Five wrong passwords in a minute lock that address out for the rest
 of the minute. If the service is down, the page is unaffected and the form says
 it could not send.
 
+### Student Directory
+
+Graduates who tick "Show my profile in the Student Directory" also upload small
+JPEG web copies of their headshot and image poster (kinds `photoWeb` and
+`posterWeb`, optional, through the same `/start` → R2 → transfer path). Nothing
+is public until the committee approves it at `https://stitchexhibition.com/_s/review`
+(same password as the downloads). The page lists everyone as waiting, live,
+hidden or not in the directory, with Approve and Hide; decisions go to
+`/data/approvals.state`. The Directory page reads `/_s/directory.json`, the
+images come from `/_s/media/<id>/<kind>.<ext>` (Cloudflare caches them for up to five
+minutes, so a hidden profile's images are gone within five minutes), and a PDF poster from `/_s/poster/<id>`,
+which redirects to a 15-minute presigned R2 link so it never goes up the home
+connection. The sheet has "Asked for directory" and "Directory" columns.
+
+To try it locally, `node deploy/submissions/dev.mjs` now runs a stand-in for R2
+(`dev-r2.mjs`, localhost only, never in the image) when no R2 settings are in
+the shell, so the whole flow works without a bucket: submit at
+`http://localhost:8000/#links`, approve at `/_s/review` (password `dev`), and see
+it at `/#directory`.
+
 **Exports are served from this box, so they go up the home connection** (about
 44 Mbit/s measured): the sheet and headshots take seconds, but tens of GB of
 booklets take hours. Start the booklets download well before it is needed.

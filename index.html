@@ -38,7 +38,7 @@
   /* ---------- top menu: four equal columns, each label centred in its third ---------- */
   .nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
     opacity: 0; transition: opacity 1.2s ease;
   }
@@ -200,6 +200,71 @@
   }
   @media (max-width: 700px) { .lnks { padding-inline: var(--x1, 16px); } }
 
+  /* ---------- graduates page: a grid of headshots, each opening its profile ---------- */
+  .grads {
+    color: var(--ink); font-family: var(--mono); text-transform: uppercase;
+    font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
+    padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
+    padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
+  }
+  .grads .ghead { color: var(--red); margin: 0 0 clamp(28px, 5vh, 56px); font: inherit; font-size: clamp(20px, 2.4vw, 34px); font-weight: 500; letter-spacing: .02em; line-height: 1.15; }
+  .grads .gdegs { display: grid; gap: .9em; justify-items: start; }
+  .grads .gdeg { width: 100%; display: grid; justify-items: start; }
+  .grads .gdrop {
+    appearance: none; background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; text-align: left;
+  }
+  .grads .gdrop:hover .lt { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .grads .gdrop .gcount { color: #999; text-decoration: none !important; }
+  .grads .gdrop .plus { display: inline-block; line-height: 1; transition: transform .3s ease; text-decoration: none !important; color: var(--ink); }
+  .grads .gdrop[aria-expanded="true"] .plus { transform: rotate(45deg); }
+  .grads .gdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .grads .gdrop-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s ease; width: 100%; }
+  .grads .gdrop-body > div { overflow: hidden; min-height: 0; }
+  .grads .gdrop-body.open { grid-template-rows: 1fr; }
+  .grads .gdrop-body .ggrid { padding: clamp(20px, 3.5vh, 36px) 0 clamp(28px, 5vh, 48px); }
+  .grads .ggrid {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(28px, 4vw, 56px) clamp(16px, 2.2vw, 32px);
+  }
+  .grads .gcard { display: grid; gap: .3em; color: var(--ink); text-decoration: none; font-size: .82em; }
+  .grads .gcard img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 50% 20%; background: #eee; margin-bottom: .75em; transition: opacity .2s ease; }
+  .grads .gcard:hover img { opacity: .85; }
+  .grads .gcard:hover .gc-name { color: var(--red); }
+  .grads .gcard:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  .grads .gc-name { line-height: 1.3; }
+  .grads .gc-from { color: #999; line-height: 1.3; text-transform: none; letter-spacing: 0; }
+  .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
+  .grads .ggrid.in .gcard { opacity: 1; transform: none; }
+  @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .grads .gcredit { margin: clamp(36px, 6vh, 64px) 0 0; color: #999; font-size: .75em; letter-spacing: .06em; }
+  .grads .gempty { margin: 0; color: #888; }
+  .grads .gback { color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: clamp(20px, 4vh, 40px); }
+  .grads .gback:hover { color: var(--red); }
+  .grads .gback:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .grads .gprof { outline: none; }
+  .grads .gtop { display: grid; grid-template-columns: minmax(0, clamp(200px, 26vw, 380px)) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
+  .grads .gphoto { width: 100%; aspect-ratio: 1 / 1; object-position: 50% 20%; object-fit: cover; background: #f1f1f1; display: block; }
+  .grads .ginfo { display: grid; gap: 1em; justify-items: start; max-width: 38em; }
+  .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
+  .grads .gfrom { margin: -.4em 0 0; color: #888; }
+  .grads .gfrom:empty { display: none; }
+  .grads .gdeg { color: var(--ink); }
+  .grads .gdeg + .gfrom { margin-top: -.7em; }
+  .grads .gtitle { margin: .9em 0 -.3em; font: inherit; font-weight: 500; color: var(--red); letter-spacing: .03em; line-height: 1.35; }
+  .grads .gtitle:empty { display: none; }
+  .grads .gov { margin: .4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.6; white-space: pre-line; }
+  .grads .gproj { display: block; margin-top: clamp(28px, 5vh, 56px); }
+  .grads .gproj img { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; object-position: left top; background: #f7f7f7; }
+  .grads .gproj:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  @media (max-width: 700px) {
+    .grads { padding-inline: var(--x1, 16px); }
+    .grads .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 14px; }
+    .grads .gtop { grid-template-columns: minmax(0, 1fr); }
+    .grads .gphoto { max-width: 300px; }
+  }
+
   /* ---------- links page: Exhibition drop-down with the submission form ---------- */
   .lnks .xhb { display: grid; justify-items: start; width: 100%; }
   .lnks .xdrop {
@@ -277,6 +342,7 @@
   .lnks .xnotice a { color: inherit; text-underline-offset: 3px; }
   .lnks .xcheck { display: flex; gap: .7em; align-items: flex-start; text-transform: none; letter-spacing: 0; line-height: 1.45; cursor: pointer; }
   .lnks .xcheck input { accent-color: var(--red); width: 1.1em; height: 1.1em; margin: .15em 0 0; flex: none; }
+  .lnks .xlist .xhint { padding-left: 1.8em; }
   .lnks .xcheck input:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
@@ -341,6 +407,10 @@
   @media (max-width: 700px) {
     .nav { display: flex; justify-content: space-between; }
   }
+  @media (max-width: 440px) {
+    .nav { padding-inline: 10px; }
+    .nav a, .nav .email { letter-spacing: .04em; padding-inline: 2px; font-size: min(10.5px, 2.75vw); }
+  }
   @media (max-width: 600px) {
     .logo-wrap { width: calc(100vw - 32px); }
     .tagline { flex-direction: column; align-items: center; gap: 6px; }
@@ -354,6 +424,7 @@
   <a href="#home">Home</a>
   <a href="#info">Info</a>
   <a href="#links">Links</a>
+  <a href="#directory">Directory</a>
   <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
@@ -531,6 +602,13 @@
                 <label for="xWebsite">Leave this empty</label>
                 <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
               </div>
+              <div class="xfield xlist">
+                <label class="xcheck" for="xDirectory">
+                  <input id="xDirectory" name="directory" type="checkbox" value="yes" aria-describedby="xDirectoryHint">
+                  <span>Show my profile in the Student Directory</span>
+                </label>
+                <p class="xhint" id="xDirectoryHint">Your headshot, name, degree, LinkedIn, project title, overview and poster appear on this site’s Student Directory once the committee has checked them. Leave this unticked to stay out of it.</p>
+              </div>
               <div class="xfield xnotice" id="xNotice">
                 <p class="xlabel">How we use your details</p>
                 <p class="xhint">The STITCH committee collects your name, degree, headshot, project title and overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
@@ -555,6 +633,7 @@
               <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
               <p>We have your details and your files, saved as:</p>
               <ul id="xDoneFiles"></ul>
+              <p id="xDoneListed" hidden>Your profile will appear in the <a href="#directory">Student Directory</a> once the committee has checked it.</p>
               <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
               <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
             </div>
@@ -562,6 +641,32 @@
         </div>
       </div>
     </div>
+  </section>
+</main>
+
+<main class="page" id="graduates" hidden aria-label="Student directory">
+  <section class="grads" id="gradText">
+    <div class="gview" id="gradList">
+      <h1 class="ghead" id="gradHead">Student directory</h1>
+      <div class="gdegs" id="gradGroups"></div>
+      <p class="gempty" id="gradEmpty" hidden>Student profiles will appear here soon.</p>
+      <p class="gcredit">Portraits by Charlie Conybeare.</p>
+    </div>
+    <article class="gview gprof" id="gradProfile" hidden tabindex="-1" aria-labelledby="gpName">
+      <a class="gback" href="#directory">← Student directory</a>
+      <div class="gtop">
+        <img class="gphoto" id="gpPhoto" alt="">
+        <div class="ginfo">
+          <h2 class="gname" id="gpName"></h2>
+          <p class="gfrom gdeg" id="gpDegree"></p>
+          <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
+          <h3 class="gtitle" id="gpTitle"></h3>
+          <p class="gov" id="gpOverview"></p>
+          <a class="ilink" id="gpPdf" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>View poster (PDF)</span></a>
+        </div>
+      </div>
+      <a class="gproj" id="gpProject" target="_blank" rel="noopener" hidden aria-label="Open the poster full size (opens in a new tab)"><img id="gpProjectImg" alt=""></a>
+    </article>
   </section>
 </main>
 
@@ -1482,7 +1587,7 @@
   function alignInfo() {
     const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
     const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
-    [infoText, document.getElementById("sponsText"), document.getElementById("linksText")].forEach(el => {
+    [infoText, document.getElementById("sponsText"), document.getElementById("linksText"), document.getElementById("gradText")].forEach(el => {
       el.style.setProperty("--x1", x1 + "px");
       el.style.setProperty("--c1", (x2 - x1) + "px");
     });
@@ -1549,6 +1654,7 @@
     };
   }
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
+  const typeDirectory = makeTyper([document.getElementById("gradHead")]);
   const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")]);
 
   // Links: Exhibition drop-down and the submission form
@@ -1687,6 +1793,21 @@
     }
 
     // Every part of every file, four at a time, each retried with a growing wait.
+    async function webCopy(file, maxEdge, quality) {
+      if (!file) return null;
+      try {
+        const bmp = await createImageBitmap(file);
+        const k = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(bmp, 0, 0, c.width, c.height);
+        bmp.close?.();
+        return await new Promise(r => c.toBlob(r, "image/jpeg", quality));
+      } catch { return null; }
+    }
+
     async function uploadAll(plan, partSize, files) {
       const jobs = [];
       for (const [kind, { urls }] of Object.entries(plan)) {
@@ -1744,6 +1865,18 @@
         return;
       }
       const files = Object.fromEntries(Object.keys(FILES).map(k => [k, document.getElementById(fields[k]).files[0]]));
+      // For the Student Directory, small JPEG copies made here, so the site never
+      // has to serve a 20 MB headshot or a 60 MB poster. A browser that cannot
+      // read an image just sends none, and the original stands in.
+      const listed = document.getElementById("xDirectory").checked;
+      if (listed) {
+        const [pw, sw] = await Promise.all([
+          webCopy(files.photo, 1200, 0.85),
+          extOf(files.poster) !== "pdf" ? webCopy(files.poster, 2400, 0.88) : null,
+        ]);
+        if (pw) files.photoWeb = new File([pw], "photo-web.jpg", { type: "image/jpeg" });
+        if (sw) files.posterWeb = new File([sw], "poster-web.jpg", { type: "image/jpeg" });
+      }
       uploading = true;
       submitBtn.disabled = true;
       submitBtn.textContent = "[ Sending… ]";
@@ -1752,7 +1885,7 @@
       try {
         const started = await postJson("/_s/start", {
           name: form.name.value, degree: document.getElementById("xDegree").value === "other" ? document.getElementById("xDegreeOther").value : document.getElementById("xDegree").value, linkedin: form.linkedin.value, from: form.from.value, title: document.getElementById("xTitle").value, overview: overview.value,
-          consent: form.consent.checked, website: form.website.value, turnstile: robot.value,
+          consent: form.consent.checked, directory: listed, website: form.website.value, turnstile: robot.value,
           files: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, { size: f.size, type: f.type || "", name: f.name }])),
         }, 3);
         if (!started.res.ok || !started.data.ok) {
@@ -1788,6 +1921,7 @@
           li.append(FILES[k].label[0].toUpperCase() + FILES[k].label.slice(1) + ": ", span);
           return li;
         }));
+        document.getElementById("xDoneListed").hidden = !listed;
         form.hidden = true; done.hidden = false; done.focus();
         status.textContent = "";
       } catch {
@@ -1831,10 +1965,109 @@
   });
 
 
+  // ================= GRADUATES =================
+  // Approved profiles come from the submissions service; nothing is baked into the page.
+  const gradGroups = document.getElementById("gradGroups");
+  // Degrees in the order the form lists them; any typed under "Other" follow, A to Z.
+  const DEGREE_ORDER = [...document.querySelectorAll("#xDegree option")].map(o => o.textContent).filter(t => t && t !== "Other" && t !== "Choose your degree");
+  const gradList = document.getElementById("gradList");
+  const gradProfile = document.getElementById("gradProfile");
+  let graduates = null, gradLoading = null;
+  function loadGraduates() {
+    if (graduates) return Promise.resolve(graduates);
+    if (gradLoading) return gradLoading;
+    gradLoading = fetch("/_s/directory.json", { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : { graduates: [] })
+      .catch(() => ({ graduates: [] }))
+      .then(d => {
+        graduates = Array.isArray(d.graduates) ? d.graduates : [];
+        const card = (g, i) => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.className = "gcard"; a.href = "#directory/" + encodeURIComponent(g.slug);
+          a.style.setProperty("--i", Math.min(i, 30));
+          const img = document.createElement("img");
+          img.src = g.photo; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+          const n = document.createElement("span"); n.className = "gc-name"; n.textContent = g.name;
+          a.append(img, n);
+          if (g.degree) { const f = document.createElement("span"); f.className = "gc-from"; f.textContent = g.degree; a.append(f); }
+          li.append(a); return li;
+        };
+        const groups = new Map();
+        for (const g of graduates) {
+          const d = g.degree || "Other";
+          if (!groups.has(d)) groups.set(d, []);
+          groups.get(d).push(g);
+        }
+        const rank = d => { const i = DEGREE_ORDER.indexOf(d); return i < 0 ? DEGREE_ORDER.length : i; };
+        const names = [...groups.keys()].sort((x, y) => rank(x) - rank(y) || x.localeCompare(y, "en-AU"));
+        gradGroups.replaceChildren(...names.map((d, gi) => {
+          const people = groups.get(d);
+          const sec = document.createElement("section"); sec.className = "gdeg";
+          const btn = document.createElement("button");
+          btn.type = "button"; btn.className = "ilink gdrop"; btn.setAttribute("aria-expanded", "false");
+          const id = "gdeg-" + gi; btn.setAttribute("aria-controls", id);
+          btn.innerHTML = '<span class="sq" aria-hidden="true"></span><span class="lt"></span><span class="gcount"></span><span class="plus" aria-hidden="true">+</span>';
+          btn.querySelector(".lt").textContent = d;
+          btn.querySelector(".gcount").textContent = "(" + people.length + ")";
+          const body = document.createElement("div"); body.className = "gdrop-body"; body.id = id; body.inert = true;
+          const inner = document.createElement("div");
+          const ul = document.createElement("ul"); ul.className = "ggrid";
+          ul.append(...people.map(card));
+          inner.append(ul); body.append(inner);
+          btn.addEventListener("click", () => {
+            const open = btn.getAttribute("aria-expanded") !== "true";
+            btn.setAttribute("aria-expanded", String(open));
+            body.classList.toggle("open", open); body.inert = !open;
+            ul.classList.remove("in");
+            if (open) requestAnimationFrame(() => requestAnimationFrame(() => ul.classList.add("in")));
+          });
+          sec.append(btn, body);
+          return sec;
+        }));
+        document.getElementById("gradEmpty").hidden = graduates.length > 0;
+        gradLoading = null;
+        return graduates;
+      });
+    return gradLoading;
+  }
+  function showGraduate(slug) {
+    const g = slug && graduates && graduates.find(x => x.slug === slug);
+    gradList.hidden = !!g; gradProfile.hidden = !g;
+    if (!g) {
+      document.title = baseTitle;
+      return;
+    }
+    document.getElementById("gpPhoto").src = g.photo;
+    document.getElementById("gpPhoto").alt = g.name;
+    document.getElementById("gpName").textContent = g.name;
+    document.getElementById("gpDegree").textContent = g.degree || "";
+    const li = document.getElementById("gpLinkedin");
+    li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }
+    document.getElementById("gpTitle").textContent = g.title || "";
+    document.getElementById("gpOverview").textContent = g.overview;
+    const pdf = document.getElementById("gpPdf"), proj = document.getElementById("gpProject");
+    const poster = g.poster;
+    pdf.hidden = !(poster && poster.kind === "pdf");
+    proj.hidden = !(poster && poster.kind === "image");
+    if (poster && poster.kind === "pdf") { pdf.href = poster.url; pdf.setAttribute("aria-label", "View the poster as a PDF (opens in a new tab)"); }
+    if (poster && poster.kind === "image") {
+      proj.href = poster.url;
+      const pi = document.getElementById("gpProjectImg"); pi.src = poster.url; pi.alt = g.name + ", project poster";
+    }
+    document.title = g.name + " - STITCH";
+    document.getElementById("graduates").scrollTop = 0;
+    gradProfile.focus({ preventScroll: true });
+  }
+  const baseTitle = document.title;
+  const pageOf = h => h.replace(/^#/, "").split("/")[0];
+  const slugIn = h => decodeURIComponent(h.replace(/^#/, "").split("/").slice(1).join("/"));
+
   // ================= ROUTING =================
   const PAGES = {
     info:     { el: info, color: "#ffffff" },
     links:    { el: document.getElementById("links"), color: "#ffffff" },
+    directory:{ el: document.getElementById("graduates"), color: "#ffffff" },
     sponsors: { el: document.getElementById("sponsors"), color: "#ffffff" },
   };
   let current = "home";
@@ -1861,12 +2094,14 @@
       if (name === "info") { alignInfo(); startTyping(); }
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
       if (name === "links") { alignInfo(); typeLinks(); }
+      if (name === "directory") { alignInfo(); typeDirectory(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
     }
   }
 
   function route(animate) {
-    const name = location.hash.slice(1);
+    const name = pageOf(location.hash);
     const target = PAGES[name] ? name : "home";
+    if (target === current && target === "directory") { loadGraduates().then(() => showGraduate(slugIn(location.hash))); return; }
     if (target === current || washing) return;
     if (!animate) { setView(target); return; }
     const bgOf = name => name === "home" ? "#000000" : PAGES[name].color;
@@ -1889,7 +2124,7 @@
 
   // ================= START =================
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
-    if (PAGES[location.hash.slice(1)]) { setView(location.hash.slice(1)); nav.classList.add("show"); }
+    if (PAGES[pageOf(location.hash)]) { setView(pageOf(location.hash)); nav.classList.add("show"); }
     else { markNav("home"); playIntro(); }
   });
 })();

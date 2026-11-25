@@ -27,17 +27,29 @@
  * booklets go to `submissions-files`, and their R2 copies are kept until the
  * deletion date as the off-box copy.
  *
+ * The Student Directory. A graduate may also tick "show my profile in the
+ * Student Directory". Their browser then sends small JPEG web copies of the
+ * headshot (and of an image poster) beside the originals. Nothing is shown
+ * until the committee approves it on the review page; a resubmission waits
+ * for approval while the earlier approved profile stays up, and one without
+ * the tick takes the profile down at once. The directory serves only those
+ * web copies, and a PDF poster by a short-lived R2 link, never the originals
+ * or the booklets, and it empties with everything else on the deletion date.
+ *
  * Two servers, two ports:
  *   FORM_PORT   POST /start, /complete              nginx, from the public site
+ *               GET  /directory.json, /media/<id>/<kind>, /poster/<id>
  *   ADMIN_PORT  GET  /export[/posters|/booklets],   nginx, behind SUBMISSIONS_KEY
- *                    /status;  GET /health           (healthcheck, local only)
+ *                    /status, /review, /review/media/<id>/<kind>
+ *               POST /review/<id>/(approve|hide)
+ *               GET  /health                        (healthcheck, local only)
  *
  * Node builtins only: no package.json, no node_modules.
  */
 
 import { createServer } from 'node:http';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
@@ -80,7 +92,13 @@ const KINDS = {
   photo: { label: 'headshot', dir: DATA, types: { jpg: 20 * MB, png: 20 * MB, webp: 20 * MB } },
   poster: { label: 'poster', dir: FILES, types: { pdf: 300 * MB, jpg: 60 * MB, png: 60 * MB } },
   booklet: { label: 'booklet', dir: FILES, types: { pdf: 1024 * MB } },
+  // Web copies the browser makes for the Student Directory, only when the
+  // person opts in. Optional: a browser that cannot make one just sends none.
+  photoWeb: { label: 'web headshot', dir: DATA, types: { jpg: 4 * MB }, optional: true },
+  posterWeb: { label: 'web poster', dir: DATA, types: { jpg: 8 * MB }, optional: true },
 };
+/** What the directory may show of a record: only these, never the originals' bulk. */
+const WEB = ['photoWeb', 'posterWeb'];
 const MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
 const EXT_OF_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
@@ -117,6 +135,12 @@ const CONSENT = 'exhibition labels and catalogue, stitchexhibition.com, STITCH s
 
 const salt = randomBytes(32);
 const budget = new Map();
+/** Directory requests one address may make in a minute: generous for browsing, not for scraping. */
+const PUBLIC_PER_MINUTE = 600;
+const publicBudget = new Map();
+/** Directory decisions, by record id: 'approved' or 'hidden'. Missing means waiting for review. */
+let approvals = {};
+const APPROVALS = () => join(DATA, 'approvals.state');
 const authFails = new Map();
 let budgetSince = Date.now();
 
@@ -194,6 +218,7 @@ function minuteTick() {
   if (now - budgetSince > 60 * 1000) {
     budget.clear();
     authFails.clear();
+    publicBudget.clear();
     budgetSince = now;
   }
 }
@@ -204,6 +229,15 @@ function allowed(req) {
   const spent = budget.get(id) ?? 0;
   if (spent >= PER_MINUTE) return false;
   if (budget.size < 50_000) budget.set(id, spent + 1);
+  return true;
+}
+
+function publicAllowed(req) {
+  minuteTick();
+  const id = fingerprint(req);
+  const spent = publicBudget.get(id) ?? 0;
+  if (spent >= PUBLIC_PER_MINUTE) return false;
+  if (publicBudget.size < 50_000) publicBudget.set(id, spent + 1);
   return true;
 }
 
@@ -271,6 +305,7 @@ function readJson(req, max = 64 * 1024) {
 const saving = new Map();
 function save(r) {
   records.set(r.id, r);
+  profilesCache = null;
   const turn = (saving.get(r.id) ?? Promise.resolve()).then(async () => {
     const { tokenHash, ...rest } = r;
     const body = JSON.stringify({ ...rest, tokenHash: tokenHash ? Buffer.from(tokenHash).toString('hex') : undefined }, null, 2);
@@ -300,6 +335,12 @@ async function load() {
     }
   }
   for (const f of await readdir(FILES)) if (f.startsWith('.')) await rm(join(FILES, f), { force: true });
+  try {
+    approvals = JSON.parse(await readFile(APPROVALS(), 'utf8'));
+    profilesCache = null;
+  } catch {
+    approvals = {};
+  }
 }
 
 const all = () => [...records.values()].sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
@@ -354,12 +395,18 @@ async function start(req, res) {
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
   else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
   if (body.consent !== true) problems.consent = 'Please tick the box to agree to how your details are used.';
+  const listed = body.directory === true;
 
   const files = {};
   for (const [kind, spec] of Object.entries(KINDS)) {
     const f = body.files?.[kind];
     const size = Number(f?.size);
     const ext = EXT_OF_MIME[String(f?.type ?? '').toLowerCase()] ?? extFromName(f?.name);
+    if (spec.optional) {
+      // A web copy is only wanted for the directory, and only kept when it is what it says.
+      if (listed && f && Number.isSafeInteger(size) && size > 0 && ext && spec.types[ext] && size <= spec.types[ext]) files[kind] = { size, ext };
+      continue;
+    }
     if (!f || !Number.isSafeInteger(size) || size <= 0) {
       problems[kind] = `Please attach your ${spec.label}.`;
     } else if (!ext || !spec.types[ext]) {
@@ -379,14 +426,14 @@ async function start(req, res) {
   reserving.count += 1;
   reserving.bytes += wanted;
   try {
-    return await openUploads(res, { name, degree, linkedin, from, title, overview, files });
+    return await openUploads(res, { name, degree, linkedin, from, title, overview, listed, files });
   } finally {
     reserving.count -= 1;
     reserving.bytes -= wanted;
   }
 }
 
-async function openUploads(res, { name, degree, linkedin, from, title, overview, files }) {
+async function openUploads(res, { name, degree, linkedin, from, title, overview, listed, files }) {
   const submittedAt = new Date().toISOString();
   const id = `${submittedAt.replace(/[-:.TZ]/g, '')}-${randomBytes(4).toString('hex')}`;
   const token = randomBytes(24).toString('base64url');
@@ -400,6 +447,8 @@ async function openUploads(res, { name, degree, linkedin, from, title, overview,
     from,
     title,
     overview,
+    /** Whether they asked to be shown in the Student Directory. */
+    listed,
     /** What the person agreed to, in the words of the notice they ticked. */
     consent: CONSENT,
     tokenHash: hashToken(token),
@@ -441,7 +490,7 @@ async function complete(req, res) {
   const given = hashToken(String(body.token ?? ''));
   if (!r || !r.tokenHash || !timingSafeEqual(given, r.tokenHash)) return json(res, 404, { error: 'That upload was not found. Please start again.' });
 
-  const names = Object.fromEntries(Object.entries(r.files).map(([k, f]) => [k, `${fileSafe(r.name)}.${f.ext}`]));
+  const names = Object.fromEntries(Object.entries(r.files).filter(([k]) => !KINDS[k].optional).map(([k, f]) => [k, `${fileSafe(r.name)}.${f.ext}`]));
   // A browser that lost the first answer retries. If that first attempt is
   // still running, wait for it rather than complete the same uploads twice.
   if (completing.has(r.id)) {
@@ -668,9 +717,263 @@ async function purgeIfDue() {
     }
   }
   records.clear();
+  approvals = {};
+  profilesCache = null;
   // In parallel: the R2 client holds them to its own limit of calls in flight.
   if (r2) await Promise.all((await r2.list('')).map((key) => r2.delete(key).then(() => (n += 1))));
   if (n) console.log(`retention: deleted ${n} files and objects (past ${DELETE_AFTER.toISOString()})`);
+}
+
+// ---------------------------------------------------------------- directory
+
+/**
+ * Everyone, once, by name: their latest stored submission, their review
+ * status, and the submission the directory shows for them, if any. That is
+ * the latest one they listed that the committee approved, unless their latest
+ * submission says no or the committee hid it.
+ */
+/**
+ * The directory, computed once and kept until a record or a decision changes.
+ * Every public request needs it (each image checks its profile is shown), so
+ * rebuilding it per request would spend the container's CPU on a crowd.
+ */
+let profilesCache = null;
+function profiles() {
+  if (!profilesCache) profilesCache = buildProfiles();
+  return profilesCache;
+}
+
+function buildProfiles() {
+  const byName = new Map();
+  for (const r of all()) {
+    if (r.state !== 'stored') continue;
+    const k = nameKey(r.name);
+    const p = byName.get(k) ?? { history: [] };
+    p.history.push(r);
+    p.latest = r;
+    byName.set(k, p);
+  }
+  const list = [...byName.values()].sort((a, b) => a.latest.name.localeCompare(b.latest.name, 'en-AU'));
+  for (const p of list) {
+    const mark = approvals[p.latest.id];
+    p.status = !p.latest.listed ? 'private' : mark === 'approved' ? 'live' : mark === 'hidden' ? 'hidden' : 'waiting';
+    p.shown = null;
+    if (p.latest.listed && mark !== 'hidden') {
+      for (let i = p.history.length - 1; i >= 0; i--) {
+        const r = p.history[i];
+        if (r.listed && approvals[r.id] === 'approved' && (usable(r.files.photoWeb) || usable(r.files.photo))) {
+          p.shown = r;
+          break;
+        }
+      }
+    }
+  }
+  return list;
+}
+
+const usable = (f) => f && f.stored && f.file && !f.problem;
+
+/** A short, readable address for a profile: #directory/jane-citizen. */
+const slugOf = (name) =>
+  name.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'graduate';
+
+/** What the public page gets: the fields a wall label would carry, never "where from" or the files' originals. */
+function directory() {
+  const used = new Set();
+  const out = [];
+  for (const p of profiles()) {
+    const r = p.shown;
+    if (!r) continue;
+    let slug = slugOf(r.name);
+    for (let n = 2; used.has(slug); n++) slug = `${slugOf(r.name)}-${n}`;
+    used.add(slug);
+    const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : 'photo';
+    let poster = null;
+    if (usable(r.files.posterWeb)) poster = { kind: 'image', url: mediaUrl(r, 'posterWeb') };
+    else if (r.files.poster?.ext === 'pdf' && r.files.poster.stored) poster = { kind: 'pdf', url: `/_s/poster/${r.id}` };
+    out.push({
+      slug,
+      name: r.name,
+      degree: r.degree ?? '',
+      title: r.title ?? '',
+      overview: r.overview,
+      linkedin: r.linkedin,
+      photo: mediaUrl(r, photoKind),
+      poster,
+    });
+  }
+  return out;
+}
+
+/**
+ * A public image's address ends in its file's extension. Cloudflare caches by
+ * extension, so the edge serves the directory's images and they do not go up
+ * the home connection once per visitor; a crowd at the opening on one venue
+ * Wi-Fi would otherwise also meet the per-address limit below.
+ */
+const mediaUrl = (r, kind) => `/_s/media/${r.id}/${kind}.${r.files[kind].ext}`;
+/**
+ * How long a browser or Cloudflare may keep a public image. Short, because a
+ * profile the committee hides must disappear: at most this long after it does.
+ */
+const PUBLIC_IMAGE_CACHE = 'public, max-age=300';
+const gone = (res) => res.writeHead(404, { 'cache-control': 'no-store' }).end();
+
+/** The record behind a public request, only if the directory shows it. */
+function shownRecord(id) {
+  for (const p of profiles()) if (p.shown?.id === id) return p.shown;
+  return null;
+}
+
+async function sendFile(res, kind, f, cache) {
+  res.writeHead(200, {
+    'content-type': MIME[f.ext],
+    'content-length': f.storedSize,
+    'cache-control': cache,
+    'x-content-type-options': 'nosniff',
+  });
+  await pipeline(createReadStream(join(KINDS[kind].dir, f.file)), res);
+}
+
+/** The directory as sent, rebuilt only when profiles() is. */
+const directoryJson = { for: null, body: '' };
+
+/** GET /directory.json, /media/<id>/<kind>, /poster/<id>: approved profiles only. */
+async function publicGet(req, res, path) {
+  if (!publicAllowed(req)) return json(res, 429, { error: 'Too many requests. Please wait a minute.' });
+  if (path === '/directory.json') {
+    const current = profiles();
+    if (directoryJson.for !== current) {
+      directoryJson.body = JSON.stringify({ graduates: directory() });
+      directoryJson.for = current;
+    }
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' });
+    return res.end(directoryJson.body);
+  }
+  const media = /^\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)\.(jpg|png|webp)$/.exec(path);
+  if (media) {
+    const r = shownRecord(media[1]);
+    const f = r?.files[media[2]];
+    // The original headshot only stands in when the browser could not make a web copy.
+    if (!r || !usable(f) || f.ext !== media[3] || (media[2] === 'photo' && usable(r.files.photoWeb))) return gone(res);
+    return sendFile(res, media[2], f, PUBLIC_IMAGE_CACHE);
+  }
+  const poster = /^\/poster\/([0-9a-f-]{1,64})$/.exec(path);
+  if (poster) {
+    const r = shownRecord(poster[1]);
+    const f = r?.files.poster;
+    if (!r || f?.ext !== 'pdf' || !f.stored) return gone(res);
+    // A poster PDF runs to hundreds of MB: hand the reader a short-lived R2 link
+    // rather than stream it up the home connection. Without R2, stream it.
+    if (r2) {
+      const url = r2.presign('GET', f.key, { expires: 15 * 60, query: { 'response-content-disposition': `inline; filename="${fileSafe(r.name).replace(/[^\x20-\x7e]/g, '_')} - poster.pdf"` } });
+      res.writeHead(302, { location: url, 'cache-control': 'no-store' });
+      return res.end();
+    }
+    return sendFile(res, 'poster', f, 'no-store');
+  }
+  return gone(res);
+}
+
+// ---------------------------------------------------------------- review
+
+const STATUS_WORD = { live: 'Live', waiting: 'Waiting for review', hidden: 'Hidden', private: 'Not in directory' };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+async function reviewPage(res) {
+  const list = [...profiles()]; // a copy: profiles() is shared, and this sorts it
+
+  const order = { waiting: 0, live: 1, hidden: 2, private: 3 };
+  list.sort((a, b) => order[a.status] - order[b.status] || a.latest.name.localeCompare(b.latest.name, 'en-AU'));
+  const counts = { waiting: 0, live: 0, hidden: 0, private: 0 };
+  for (const p of list) counts[p.status] += 1;
+  const cards = list
+    .map((p) => {
+      const r = p.latest;
+      // Someone who did not opt in has nothing to review, so their full-size original is not loaded.
+      const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : p.status !== 'private' && usable(r.files.photo) ? 'photo' : null;
+      const posterKind = usable(r.files.posterWeb) ? 'posterWeb' : null;
+      const poster = posterKind
+        ? `<a href="/_s/review/media/${r.id}/${posterKind}" target="_blank" rel="noopener">View poster</a>`
+        : r.files.poster?.ext === 'pdf'
+          ? '<span class="muted">Poster is a PDF (in the poster download)</span>'
+          : '<span class="muted">No web copy of the poster</span>';
+      const note = p.status === 'waiting' && p.shown && p.shown.id !== r.id ? '<p class="note">Updated. Their earlier approved profile stays up until you approve this one.</p>' : '';
+      const actions =
+        p.status === 'private'
+          ? '<p class="muted">They did not ask to be in the Student Directory.</p>'
+          : `<form method="post" action="/_s/review/${esc(r.id)}/approve"><button ${p.status === 'live' ? 'disabled' : ''}>Approve</button></form>
+             <form method="post" action="/_s/review/${esc(r.id)}/hide"><button class="ghost" ${p.status === 'hidden' ? 'disabled' : ''}>Hide</button></form>`;
+      return `<article class="card ${p.status}">
+        ${photoKind ? `<img src="/_s/review/media/${r.id}/${photoKind}" alt="" loading="lazy">` : '<div class="noimg">No photo</div>'}
+        <div class="body">
+          <p class="status">${STATUS_WORD[p.status]}</p>
+          <h2>${esc(r.name)}</h2>
+          <p class="meta">${esc(r.degree || 'No degree given')}${r.linkedin ? ` · <a href="${esc(r.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}</p>
+          <p class="ov"><b>${esc(r.title || 'Untitled')}</b><br>${esc(r.overview)}</p>
+          <p>${poster}</p>
+          ${note}
+          <div class="actions">${actions}</div>
+        </div>
+      </article>`;
+    })
+    .join('\n');
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STITCH - Student Directory review</title>
+<style>
+:root{--ink:#111;--red:#C82B29}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:14px/1.5 "IBM Plex Mono",ui-monospace,Menlo,monospace}
+header{padding:28px 24px 8px}h1{margin:0 0 6px;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.sum{margin:0;color:#666}.sum b{color:var(--ink);font-weight:500}.links{margin:8px 0 0}.links a{color:var(--red)}
+main{padding:16px 24px 60px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.card{border:1px solid #ddd;display:grid;grid-template-columns:110px 1fr;gap:14px;padding:14px}
+.card.waiting{border-color:var(--red)}.card.private,.card.hidden{opacity:.6}
+.card img,.noimg{width:110px;aspect-ratio:1;object-fit:cover;background:#f2f2f2;display:grid;place-items:center;font-size:11px;color:#888}
+h2{margin:0;font-size:15px;font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.status{margin:0 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
+.live .status{color:#2a7a2a}.meta{margin:4px 0;color:#666}.ov{margin:8px 0;white-space:pre-wrap}
+a{color:var(--ink)}.muted{color:#888}.note{font-size:12px;color:var(--red)}
+.actions{display:flex;gap:8px;margin-top:10px}.actions form{margin:0}
+button{font:inherit;text-transform:uppercase;letter-spacing:.03em;border:0;border-radius:0;padding:.3em .7em;background:var(--red);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);outline:1px solid var(--ink)}button[disabled]{opacity:.35;cursor:default}
+</style></head><body>
+<header><h1>Student Directory: review</h1>
+<p class="sum"><b>${counts.waiting}</b> waiting · <b>${counts.live}</b> live · <b>${counts.hidden}</b> hidden · <b>${counts.private}</b> not in directory</p>
+<p class="links"><a href="/#directory" target="_blank" rel="noopener">Open the Student Directory</a> · <a href="/_s/export">Download the sheet and headshots</a></p></header>
+<main>${cards || '<p class="muted">No submissions yet.</p>'}</main>
+</body></html>`;
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY' });
+  res.end(html);
+}
+
+async function reviewMedia(res, id, kind) {
+  const r = records.get(id);
+  const f = r?.files[kind];
+  if (!usable(f) || !['photoWeb', 'photo', 'posterWeb'].includes(kind)) return res.writeHead(404).end();
+  return sendFile(res, kind, f, 'private, no-store');
+}
+
+/**
+ * Approve or hide. The committee's browser sends its saved password with any
+ * request to this site, so a POST from another site's page would carry it too:
+ * only a same-origin request is accepted.
+ */
+async function decide(req, res, id, action) {
+  const site = req.headers['sec-fetch-site'];
+  const origin = req.headers.origin;
+  if ((site && site !== 'same-origin') || (!site && origin && !/^https:\/\/(www\.)?stitchexhibition\.com$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))) {
+    return res.writeHead(403).end();
+  }
+  const r = records.get(id);
+  if (!r || r.state !== 'stored') return res.writeHead(404).end();
+  approvals[id] = action === 'approve' ? 'approved' : 'hidden';
+  profilesCache = null;
+  const tmp = join(DATA, `.approvals.${randomBytes(4).toString('hex')}`);
+  await writeFile(tmp, JSON.stringify(approvals, null, 2));
+  await rename(tmp, APPROVALS());
+  console.log(`review ${id}: ${approvals[id]}`);
+  res.writeHead(303, { location: '/_s/review', 'cache-control': 'no-store' });
+  res.end();
 }
 
 // ---------------------------------------------------------------- export
@@ -707,6 +1010,7 @@ function zipHeaders(res, label) {
 /** The sheet and every headshot: the small download the committee opens first. */
 async function exportMain(res) {
   const people = named(latestStored());
+  const status = new Map(profiles().map((p) => [p.latest.id, p.status]));
   const rows = people.map(({ p, out }) => [
     p.name,
     p.degree ?? '',
@@ -719,11 +1023,13 @@ async function exportMain(res) {
     mb(p.files.poster?.storedSize),
     out.booklet ? `booklets/${out.booklet}` : `booklet ${p.files.booklet?.problem ?? 'missing'}`,
     mb(p.files.booklet?.storedSize),
+    p.listed ? 'Yes' : 'No',
+    STATUS_WORD[status.get(p.id)] ?? '',
     adelaideTime(p.completedAt ?? p.submittedAt),
   ]);
   const sheet = await workbook(
-    ['Full name', 'Degree', 'LinkedIn', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Booklet', 'Booklet size', 'Submitted'],
-    [28, 34, 40, 24, 36, 80, 34, 34, 12, 34, 12, 20],
+    ['Full name', 'Degree', 'LinkedIn', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Booklet', 'Booklet size', 'Asked for directory', 'Directory', 'Submitted'],
+    [28, 34, 40, 24, 36, 80, 34, 34, 12, 34, 12, 12, 18, 20],
     rows,
     [5],
   );
@@ -767,6 +1073,7 @@ function statusReport() {
     lastTransferError: transfer.lastError ? { at: transfer.lastErrorAt, error: transfer.lastError } : null,
     flagged: people.flatMap((p) => Object.entries(p.files).filter(([, f]) => f.problem).map(([k, f]) => `${p.name}: ${k} ${f.problem}`)),
     names: people.map((p) => p.name),
+    directory: Object.fromEntries(['live', 'waiting', 'hidden', 'private'].map((s) => [s, profiles().filter((p) => p.status === s).length])),
     stillComingDown: waiting,
   };
 }
@@ -785,6 +1092,13 @@ function authorised(req) {
 
 const formServer = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
+  if (req.method === 'GET') {
+    return void publicGet(req, res, path).catch((e) => {
+      console.error(`${path} failed`, e.message);
+      if (!res.headersSent) json(res, 500, { error: 'failed' });
+      else res.destroy();
+    });
+  }
   const handler = req.method === 'POST' && { '/start': start, '/complete': complete }[path];
   if (!handler) return res.writeHead(404).end();
   handler(req, res).catch((e) => {
@@ -794,12 +1108,23 @@ const formServer = createServer((req, res) => {
   });
 });
 
-const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportKind(res, 'poster'), '/export/booklets': (res) => exportKind(res, 'booklet'), '/status': async (res) => json(res, 200, statusReport()) };
+const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportKind(res, 'poster'), '/export/booklets': (res) => exportKind(res, 'booklet'), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
+
+/** The admin route for a request, or null. Review media and decisions carry an id in the path. */
+function adminRoute(req, path) {
+  if (req.method === 'GET' && ADMIN[path]) return (res) => ADMIN[path](res);
+  const media = req.method === 'GET' && /^\/review\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)$/.exec(path);
+  if (media) return (res) => reviewMedia(res, media[1], media[2]);
+  const act = req.method === 'POST' && /^\/review\/([0-9a-f-]{1,64})\/(approve|hide)$/.exec(path);
+  if (act) return (res) => decide(req, res, act[1], act[2]);
+  return null;
+}
 
 const adminServer = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
   if (req.method === 'GET' && path === '/health') return json(res, 200, { ok: true });
-  if (!KEY || req.method !== 'GET' || !ADMIN[path]) return res.writeHead(404).end();
+  const route = KEY && adminRoute(req, path);
+  if (!route) return res.writeHead(404).end();
   minuteTick();
   const who = fingerprint(req);
   if ((authFails.get(who) ?? 0) >= AUTH_PER_MINUTE) return res.writeHead(429, { 'retry-after': '60', 'cache-control': 'no-store' }).end();
@@ -810,7 +1135,7 @@ const adminServer = createServer((req, res) => {
     return res.writeHead(401, { 'www-authenticate': 'Basic realm="STITCH submissions", charset="UTF-8"', 'cache-control': 'no-store' }).end();
   }
   console.log(`${path}: opened by ${who}`);
-  ADMIN[path](res).catch((e) => {
+  route(res).catch((e) => {
     console.error(`${path} failed`, e);
     if (!res.headersSent) json(res, 500, { error: 'failed' });
     else res.destroy();

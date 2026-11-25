@@ -44,6 +44,25 @@ orientation. An image it cannot parse is kept out of the download and flagged in
 never stored with its metadata. PDFs are stored as sent. Files get generated names, live
 outside the web root, and leave the box only inside the committee's zips.
 
+**The Student Directory (since 2026-11-26).** A second tick box, separate from the
+consent, asks to be shown on the site's Student Directory (menu → Directory). Only then does
+the browser make small JPEG web copies of the headshot (1200 px) and of an image poster
+(2400 px) and upload them beside the originals, through the same `/start`, R2 and transfer
+path, metadata stripped like any image. Nothing is public until the committee approves it at
+`/_s/review` (behind `SUBMISSIONS_KEY`); approvals are kept in `approvals.state` on
+`submissions-data`. The public routes are `/_s/directory.json`, `/_s/media/<id>/<kind>` and
+`/_s/poster/<id>`, and they serve only approved, opted-in profiles: name, degree, LinkedIn,
+project title, overview, the web copies, and a PDF poster by a **15-minute presigned R2
+GET**, never streamed up the home connection. Place of origin, booklets and the original
+files are never public. A resubmission waits for approval while the earlier approved profile
+stays up; a resubmission without the tick takes the profile down at once. The review page's
+approve and hide buttons accept only same-origin requests, because a browser sends its saved
+Basic password with any request to the site. Public reads: **600 a minute** per address.
+Public image addresses end in their extension, so Cloudflare caches them at the edge for at
+most **5 minutes** (`max-age=300`): the home connection serves each image about once per
+edge per five minutes, and a hidden profile's images stop being served within five minutes.
+The directory empties with everything else on the deletion date.
+
 **Rate limits and capacity, with numbers.** `/start` and `/complete`: **120 a minute** per
 address. A cohort of 300 on campus Wi-Fi arrives from one university address, so this is
 sized for a class; the browser waits out a 429 and retries. Turnstile is what stops a script.
@@ -107,6 +126,10 @@ keeps every object until the deletion date.
   files upload to Cloudflare's storage service and that copies are held by Cloudflare.
 - **The `/start` budget can be spent by one campus address.** 120 a minute per address is
   shared by everyone behind that address. The browser retries a 429 after 20 s, three times.
+- **Presigned GETs for PDF posters in the directory (2026-11-26).** The service's
+  key signs a GET for one object for 15 minutes; anyone holding that URL in that window can
+  read that poster. Accepted: it is only ever signed for an approved, opted-in profile's
+  poster, which the person asked to publish.
 - **HEIC refused, PNG and WebP orientation not kept.** A sideways PNG from a phone is
   possible but rare. The committee can rotate it.
 
