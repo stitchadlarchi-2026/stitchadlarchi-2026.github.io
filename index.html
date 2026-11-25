@@ -237,6 +237,7 @@
   .lnks .xform [aria-invalid="true"] { border-color: var(--red); }
   .lnks .xform input::placeholder { color: #aaa; }
   .lnks .xhint { margin: 0; font-size: .8em; color: #777; text-transform: none; letter-spacing: 0; line-height: 1.45; }
+  .lnks #xCount.over { color: var(--red); }
   .lnks .xerr { margin: 0; font-size: .8em; color: var(--red); text-transform: none; letter-spacing: 0; }
   .lnks .xerr:empty { display: none; }
   .lnks .xfile, .lnks .xsubmit, .lnks .xagain {
@@ -456,7 +457,7 @@
               <div class="xfield">
                 <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
                 <textarea id="xOverview" name="overview" rows="5" required maxlength="900" aria-describedby="xOverviewHint xOverviewErr"></textarea>
-                <p class="xhint" id="xOverviewHint">About three sentences. <span id="xCount">0 words</span></p>
+                <p class="xhint" id="xOverviewHint">Up to 75 words. <span id="xCount">0 / 75</span></p>
                 <p class="xerr" id="xOverviewErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
@@ -1486,10 +1487,12 @@
     const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto" };
     const MAX_PHOTO = 20 * 1024 * 1024;
 
+    const MAX_WORDS = 75;
     const words = t => (t.trim().match(/\S+/g) || []).length;
     overview.addEventListener("input", () => {
       const n = words(overview.value);
-      count.textContent = n + (n === 1 ? " word" : " words");
+      count.textContent = n + " / " + MAX_WORDS;
+      count.classList.toggle("over", n > MAX_WORDS);
     });
     photo.addEventListener("change", () => {
       const f = photo.files[0];
@@ -1510,6 +1513,7 @@
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
+      else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
       const f = photo.files[0];
       if (!f) errs.photo = "Please attach your headshot.";
       else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
@@ -1554,7 +1558,7 @@
 
     document.getElementById("xAgain").addEventListener("click", () => {
       form.reset();
-      count.textContent = "0 words";
+      count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
       photoName.textContent = photoHint;
       done.hidden = true; form.hidden = false;
       form.name.focus();
