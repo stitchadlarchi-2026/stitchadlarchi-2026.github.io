@@ -41,6 +41,8 @@ const MAX_TOTAL = 6 * 1024 * 1024 * 1024;
 const PER_HOUR = 10;
 
 const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 900 };
+/** The project overview is a wall label, not an essay. */
+const MAX_WORDS = 75;
 
 const salt = randomBytes(32);
 const budget = new Map();
@@ -219,6 +221,7 @@ async function submit(req, res) {
   if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
   if (linkedin === null) problems.linkedin = 'That does not look like a LinkedIn link.';
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
+  else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
   if (!photo || typeof photo === 'string' || photo.size === 0) problems.photo = 'Please attach your headshot.';
   else if (photo.size > MAX_PHOTO) problems.photo = 'That photo is too big. The limit is 20 MB.';
   if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
