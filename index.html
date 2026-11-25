@@ -392,6 +392,17 @@
         <li><a href="https://das-studio.com.au/" target="_blank" rel="noopener" aria-label="Das Studio (opens in a new tab)"><img src="sponsors/das-studio.png" alt="Das Studio"></a></li>
       </ul>
     </section>
+    <section class="tier-group" aria-labelledby="h-bronze">
+      <h2 id="h-bronze"><button type="button" class="drop" aria-expanded="false" aria-controls="bronze-logos"><span class="title">Bronze</span><span class="plus" aria-hidden="true">+</span></button></h2>
+      <div class="drop-body" id="bronze-logos" inert>
+        <div>
+          <ul class="logos">
+            <li><a href="https://www.graphisoft.com/en-au/plans-and-products/archicad/" target="_blank" rel="noopener" aria-label="Graphisoft Archicad (opens in a new tab)"><img src="sponsors/archicad.svg" alt="Graphisoft Archicad"></a></li>
+            <li><a href="https://waxdesign.com.au/" target="_blank" rel="noopener" aria-label="WAX Design (opens in a new tab)"><img src="sponsors/wax.png" alt="WAX Design"></a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
     <section class="tier-group" aria-labelledby="h-inkind">
       <h2 id="h-inkind"><button type="button" class="drop" aria-expanded="false" aria-controls="inkind-logos"><span class="title">In kind</span><span class="plus" aria-hidden="true">+</span></button></h2>
       <div class="drop-body" id="inkind-logos" inert>
@@ -1339,10 +1350,8 @@
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
   const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
 
-  // In kind drop-down
-  spons_drop: {
-    const btn = document.querySelector(".spons .drop");
-    if (!btn) break spons_drop;
+  // Bronze and In kind drop-downs
+  document.querySelectorAll(".spons .drop").forEach(btn => {
     const body = document.getElementById(btn.getAttribute("aria-controls"));
     body.querySelectorAll("li").forEach((li, i) => li.style.setProperty("--i", i));
     btn.addEventListener("click", () => {
@@ -1351,7 +1360,7 @@
       body.classList.toggle("open", open);
       body.inert = !open;
     });
-  }
+  });
 
   // logos: record each one's aspect ratio for the optical sizing in CSS
   document.querySelectorAll(".spons .logos img").forEach(img => {
