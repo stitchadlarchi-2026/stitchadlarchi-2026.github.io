@@ -2,7 +2,7 @@
   "lane": "B",
   "owner": "client: STITCH Exhibition",
   "data_classes": [
-    "graduates' full names",
+    "graduates' full names and degrees",
     "headshot photos, location and camera metadata removed on upload",
     "project posters (PDF or image) and project booklets (PDF), up to 1 GB each",
     "optional LinkedIn URL and place of origin",

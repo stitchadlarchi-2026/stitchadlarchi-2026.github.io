@@ -226,6 +226,17 @@
   .lnks .xfield label, .lnks .xlabel { font-size: .85em; letter-spacing: .08em; }
   .lnks .req { color: var(--red); }
   .lnks .opt { color: #888; }
+  .lnks .xform select {
+    font: inherit; text-transform: none; letter-spacing: 0; color: var(--ink);
+    background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
+    padding: .45em 1.4em .45em 0; width: 100%; outline: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - .7em) 55%, calc(100% - .35em) 55%; background-size: .35em .35em; background-repeat: no-repeat;
+  }
+  .lnks .xform select:focus { border-color: var(--red); box-shadow: 0 1px 0 var(--red); }
+  .lnks .xform select:invalid { color: #aaa; }
+  .lnks .xform select option { color: var(--ink); }
+  .lnks .xcredit { margin-top: -.4em; }
   .lnks .xform input[type="text"], .lnks .xform input[type="url"], .lnks .xform textarea {
     font: inherit; text-transform: none; letter-spacing: 0; color: var(--ink);
     background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
@@ -448,6 +459,7 @@
             <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
               <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
             </a>
+            <p class="xhint xcredit">Portraits by Charlie Conybeare.</p>
             <p class="xstep"><span class="xnum">02</span> Fill in your details and upload three files: the headshot you chose, your project poster, and your project booklet.</p>
 
             <form class="xform" id="xForm" novalidate>
@@ -456,6 +468,22 @@
                 <input id="xName" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="xNameHint xNameErr">
                 <p class="xhint" id="xNameHint">First and last name, as it should appear at the exhibition.</p>
                 <p class="xerr" id="xNameErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <label for="xDegree">Degree <span class="req" aria-hidden="true">*</span></label>
+                <select id="xDegree" name="degree" required aria-describedby="xDegreeErr">
+                  <option value="" selected disabled>Choose your degree</option>
+                  <option>Bachelor of Architectural Design</option>
+                  <option>Bachelor of Architectural Design majoring in Urban Planning</option>
+                  <option>Bachelor of Interior Architecture (Honours)</option>
+                  <option>Master of Architecture</option>
+                  <option>Master of Landscape Architecture</option>
+                  <option>Master of Architecture, Master of Landscape Architecture</option>
+                  <option>Master of Urban and Regional Planning</option>
+                  <option value="other">Other</option>
+                </select>
+                <input id="xDegreeOther" name="degree_other" type="text" maxlength="120" placeholder="Write your degree" hidden aria-label="Your degree">
+                <p class="xerr" id="xDegreeErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
                 <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
@@ -505,8 +533,8 @@
               </div>
               <div class="xfield xnotice" id="xNotice">
                 <p class="xlabel">How we use your details</p>
-                <p class="xhint">The STITCH committee collects your name, headshot, project title and overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
-                <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>.</p>
+                <p class="xhint">The STITCH committee collects your name, degree, headshot, project title and overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
+                <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a> or message us on <a href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener">Instagram</a>.</p>
                 <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
                 <label class="xcheck" for="xConsent">
                   <input id="xConsent" name="consent" type="checkbox" value="yes" required aria-describedby="xNotice xConsentErr">
@@ -1544,7 +1572,13 @@
     const progress = document.getElementById("xProgress");
     const barFill = document.getElementById("xBarFill");
     const progressText = document.getElementById("xProgressText");
-    const fields = { name: "xName", linkedin: "xLinkedin", title: "xTitle", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
+    const degreeSel = document.getElementById("xDegree"), degreeOther = document.getElementById("xDegreeOther");
+    degreeSel.addEventListener("change", () => {
+      showError("degree", "");
+      degreeOther.hidden = degreeSel.value !== "other";
+      if (!degreeOther.hidden) degreeOther.focus();
+    });
+    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", title: "xTitle", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
 
     // The three uploads. Sizes in MB, per type; the server checks them again,
     // and checks each file's real first bytes once it has arrived.
@@ -1598,6 +1632,9 @@
       const errs = {};
       const name = form.name.value.trim().replace(/\s+/g, " ");
       if (name.split(" ").filter(Boolean).length < 2) errs.name = "Please give your full name, first and last.";
+      const deg = document.getElementById("xDegree"), degOther = document.getElementById("xDegreeOther");
+      if (!deg.value) errs.degree = "Please choose your degree.";
+      else if (deg.value === "other" && !degOther.value.trim()) errs.degree = "Please write your degree.";
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
       if (!document.getElementById("xTitle").value.trim()) errs.title = "Please give your project a title.";
@@ -1714,7 +1751,7 @@
       progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
       try {
         const started = await postJson("/_s/start", {
-          name: form.name.value, linkedin: form.linkedin.value, from: form.from.value, title: document.getElementById("xTitle").value, overview: overview.value,
+          name: form.name.value, degree: document.getElementById("xDegree").value === "other" ? document.getElementById("xDegreeOther").value : document.getElementById("xDegree").value, linkedin: form.linkedin.value, from: form.from.value, title: document.getElementById("xTitle").value, overview: overview.value,
           consent: form.consent.checked, website: form.website.value, turnstile: robot.value,
           files: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, { size: f.size, type: f.type || "", name: f.name }])),
         }, 3);
@@ -1767,6 +1804,7 @@
 
     document.getElementById("xAgain").addEventListener("click", () => {
       form.reset();
+      degreeOther.hidden = true;
       count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
       for (const kind of Object.keys(FILES)) document.getElementById(fields[kind] + "Name").textContent = hints[kind];
       done.hidden = true; form.hidden = false;

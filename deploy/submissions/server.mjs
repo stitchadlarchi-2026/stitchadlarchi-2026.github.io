@@ -109,7 +109,7 @@ const TRANSFERS = Number(process.env.TRANSFERS ?? 2);
  */
 const STALL_MS = Number(process.env.STALL_SECONDS ?? 60) * 1000;
 
-const LIMITS = { name: 120, from: 120, linkedin: 300, title: 150, overview: 1500 };
+const LIMITS = { name: 120, degree: 120, from: 120, linkedin: 300, title: 150, overview: 1500 };
 /** The project overview is a wall label, not an essay. */
 const MAX_WORDS = 150;
 /** Recorded with each submission. Keep in step with the notice in index.html. */
@@ -342,11 +342,13 @@ async function start(req, res) {
 
   const name = oneLine(body.name, LIMITS.name);
   const from = oneLine(body.from, LIMITS.from);
+  const degree = oneLine(body.degree, LIMITS.degree);
   const title = oneLine(body.title, LIMITS.title);
   const overview = clean(body.overview, LIMITS.overview);
   const linkedin = linkedinUrl(body.linkedin);
   const problems = {};
   if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
+  if (!degree || degree === 'other') problems.degree = 'Please choose your degree.';
   if (linkedin === null) problems.linkedin = 'That does not look like a LinkedIn link.';
   if (!title) problems.title = 'Please give your project a title.';
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
@@ -377,14 +379,14 @@ async function start(req, res) {
   reserving.count += 1;
   reserving.bytes += wanted;
   try {
-    return await openUploads(res, { name, linkedin, from, title, overview, files });
+    return await openUploads(res, { name, degree, linkedin, from, title, overview, files });
   } finally {
     reserving.count -= 1;
     reserving.bytes -= wanted;
   }
 }
 
-async function openUploads(res, { name, linkedin, from, title, overview, files }) {
+async function openUploads(res, { name, degree, linkedin, from, title, overview, files }) {
   const submittedAt = new Date().toISOString();
   const id = `${submittedAt.replace(/[-:.TZ]/g, '')}-${randomBytes(4).toString('hex')}`;
   const token = randomBytes(24).toString('base64url');
@@ -393,6 +395,7 @@ async function openUploads(res, { name, linkedin, from, title, overview, files }
     submittedAt,
     state: 'uploading',
     name,
+    degree,
     linkedin: linkedin ?? '',
     from,
     title,
@@ -706,6 +709,7 @@ async function exportMain(res) {
   const people = named(latestStored());
   const rows = people.map(({ p, out }) => [
     p.name,
+    p.degree ?? '',
     p.linkedin,
     p.from,
     p.title ?? '',
@@ -718,10 +722,10 @@ async function exportMain(res) {
     adelaideTime(p.completedAt ?? p.submittedAt),
   ]);
   const sheet = await workbook(
-    ['Full name', 'LinkedIn', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Booklet', 'Booklet size', 'Submitted'],
-    [28, 40, 24, 36, 80, 34, 34, 12, 34, 12, 20],
+    ['Full name', 'Degree', 'LinkedIn', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Booklet', 'Booklet size', 'Submitted'],
+    [28, 34, 40, 24, 36, 80, 34, 34, 12, 34, 12, 20],
     rows,
-    [4],
+    [5],
   );
   zipHeaders(res, 'submissions');
   const zip = new ZipStream(res);
