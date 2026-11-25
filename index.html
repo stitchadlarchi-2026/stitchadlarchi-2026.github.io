@@ -456,8 +456,8 @@
               </div>
               <div class="xfield">
                 <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
-                <textarea id="xOverview" name="overview" rows="5" required maxlength="900" aria-describedby="xOverviewHint xOverviewErr"></textarea>
-                <p class="xhint" id="xOverviewHint">Up to 75 words. <span id="xCount">0 / 75</span></p>
+                <textarea id="xOverview" name="overview" rows="6" required maxlength="1500" aria-describedby="xOverviewHint xOverviewErr"></textarea>
+                <p class="xhint" id="xOverviewHint">Up to 150 words. <span id="xCount">0 / 150</span></p>
                 <p class="xerr" id="xOverviewErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
@@ -1487,7 +1487,7 @@
     const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto" };
     const MAX_PHOTO = 20 * 1024 * 1024;
 
-    const MAX_WORDS = 75;
+    const MAX_WORDS = 150;
     const words = t => (t.trim().match(/\S+/g) || []).length;
     overview.addEventListener("input", () => {
       const n = words(overview.value);

@@ -40,9 +40,9 @@ const MAX_TOTAL = 6 * 1024 * 1024 * 1024;
 /** Submissions one address may make in an hour. */
 const PER_HOUR = 10;
 
-const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 900 };
+const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 1500 };
 /** The project overview is a wall label, not an essay. */
-const MAX_WORDS = 75;
+const MAX_WORDS = 150;
 
 const salt = randomBytes(32);
 const budget = new Map();
