@@ -5,9 +5,9 @@
  * LinkedIn and "where you're from", a short project overview, the headshot
  * they picked from the portrait gallery, and optionally one project file (an
  * image or a PDF). They also choose whether their profile may appear on the
- * site's Graduates page.
+ * site's Student Directory.
  *
- * Nothing reaches the Graduates page until the committee approves it on the
+ * Nothing reaches the Student Directory until the committee approves it on the
  * review page, and only if the graduate said yes. If someone submits again,
  * their latest submission is the one that counts; while it waits for
  * approval, their last approved profile stays up. Saying no takes them off.
@@ -82,7 +82,7 @@ function fileSafe(name) {
 
 const nameKey = (name) => name.toLocaleLowerCase('en-AU').replace(/\s+/g, ' ').trim();
 
-/** jane-citizen: the profile's address on the Graduates page. */
+/** jane-citizen: the profile's address on the Student Directory. */
 const slugOf = (name) =>
   name
     .normalize('NFKD')
@@ -215,7 +215,7 @@ async function approvals() {
 }
 
 /**
- * Everyone, once: their latest submission, and what the Graduates page shows
+ * Everyone, once: their latest submission, and what the Student Directory shows
  * for them (their latest approved, public submission, unless their latest says
  * no, or the committee hid it).
  */
@@ -388,7 +388,7 @@ async function catalogue() {
   return out;
 }
 
-/** Files a visitor may fetch: only those of profiles on the Graduates page. */
+/** Files a visitor may fetch: only those of profiles on the Student Directory. */
 async function publicFiles() {
   const { list } = await people();
   const ok = new Map();
@@ -616,7 +616,7 @@ async function reviewPage(res) {
     })
     .join('\n');
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>STITCH - Review graduates</title>
+<title>STITCH - Review student directory</title>
 <style>
 :root{--ink:#111;--red:#C82B29;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
 *{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:14px/1.5 var(--mono)}
@@ -635,9 +635,9 @@ button{font:inherit;text-transform:uppercase;letter-spacing:.03em;border:0;borde
 button.ghost{background:transparent;color:var(--ink);outline:1px solid var(--ink)}button[disabled]{opacity:.35;cursor:default}
 .empty{color:#888}
 </style></head><body>
-<header><h1>STITCH graduates: review</h1>
+<header><h1>STITCH student directory: review</h1>
 <p class="sum"><b>${counts.pending}</b> waiting · <b>${counts.live}</b> live · <b>${counts.hidden}</b> hidden · <b>${counts.private}</b> not on website · ${all} submissions in all</p>
-<p class="links"><a href="/_s/export">Download everything (zip)</a> · <a href="/#graduates" target="_blank" rel="noopener">Open the Graduates page</a></p></header>
+<p class="links"><a href="/_s/export">Download everything (zip)</a> · <a href="/#directory" target="_blank" rel="noopener">Open the Student Directory</a></p></header>
 <main>${cards || '<p class="empty">No submissions yet.</p>'}</main>
 </body></html>`;
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY' });

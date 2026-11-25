@@ -207,27 +207,29 @@
     padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
     padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
   }
+  .grads .ghead { margin: 0 0 clamp(28px, 5vh, 56px); font: inherit; font-size: clamp(20px, 2.4vw, 34px); font-weight: 500; letter-spacing: .02em; line-height: 1.15; }
   .grads .ggrid {
     list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 13vw, 190px), 1fr));
-    gap: clamp(22px, 3.2vw, 40px) clamp(14px, 2vw, 28px);
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(28px, 4vw, 56px) clamp(16px, 2.2vw, 32px);
   }
-  .grads .gcard { display: grid; gap: .55em; color: var(--ink); text-decoration: none; }
-  .grads .gcard img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #f1f1f1; transition: opacity .2s ease; }
-  .grads .gcard:hover img { opacity: .82; }
+  .grads .gcard { display: grid; gap: .3em; color: var(--ink); text-decoration: none; font-size: .82em; }
+  .grads .gcard img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 50% 20%; background: #eee; margin-bottom: .75em; transition: opacity .2s ease; }
+  .grads .gcard:hover img { opacity: .85; }
   .grads .gcard:hover .gc-name { color: var(--red); }
   .grads .gcard:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
   .grads .gc-name { line-height: 1.3; }
-  .grads .gc-from { color: #888; font-size: .8em; margin-top: -.25em; }
+  .grads .gc-from { color: #999; line-height: 1.3; }
   .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
   .grads .ggrid.in .gcard { opacity: 1; transform: none; }
+  @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .grads .gempty { margin: 0; color: #888; }
   .grads .gback { color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: clamp(20px, 4vh, 40px); }
   .grads .gback:hover { color: var(--red); }
   .grads .gback:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .grads .gprof { outline: none; }
   .grads .gtop { display: grid; grid-template-columns: minmax(0, clamp(200px, 26vw, 380px)) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
-  .grads .gphoto { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #f1f1f1; display: block; }
+  .grads .gphoto { width: 100%; aspect-ratio: 1 / 1; object-position: 50% 20%; object-fit: cover; background: #f1f1f1; display: block; }
   .grads .ginfo { display: grid; gap: 1em; justify-items: start; max-width: 38em; }
   .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
   .grads .gfrom { margin: -.4em 0 0; color: #888; }
@@ -238,7 +240,7 @@
   .grads .gproj:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
   @media (max-width: 700px) {
     .grads { padding-inline: var(--x1, 16px); }
-    .grads .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
+    .grads .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 14px; }
     .grads .gtop { grid-template-columns: minmax(0, 1fr); }
     .grads .gphoto { max-width: 300px; }
   }
@@ -382,7 +384,7 @@
   <a href="#home">Home</a>
   <a href="#info">Info</a>
   <a href="#links">Links</a>
-  <a href="#graduates">Graduates</a>
+  <a href="#directory">Directory</a>
   <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
@@ -530,7 +532,7 @@
               <div class="xfield xcheck">
                 <input id="xPublic" name="public" type="checkbox" value="yes" aria-describedby="xPublicHint">
                 <label for="xPublic">Show my profile and project on the STITCH website</label>
-                <p class="xhint" id="xPublicHint">Your photo, name, where you’re from, LinkedIn, overview and project appear on the Graduates page for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
+                <p class="xhint" id="xPublicHint">Your photo, name, where you’re from, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
@@ -543,7 +545,7 @@
             <div class="xdone" id="xDone" hidden tabindex="-1">
               <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
               <p>We have your details and your photo, saved as <span id="xDoneFile"></span>.</p>
-              <p id="xDonePublic" hidden>Your profile will appear on the <a href="#graduates">Graduates</a> page once the committee has checked it.</p>
+              <p id="xDonePublic" hidden>Your profile will appear in the <a href="#directory">Student Directory</a> once the committee has checked it.</p>
               <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
               <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
             </div>
@@ -554,15 +556,15 @@
   </section>
 </main>
 
-<main class="page" id="graduates" hidden aria-label="Graduates">
+<main class="page" id="graduates" hidden aria-label="Student directory">
   <section class="grads" id="gradText">
-    <h1 class="sr-only">Graduates</h1>
     <div class="gview" id="gradList">
+      <h1 class="ghead" id="gradHead">Student directory</h1>
       <ul class="ggrid" id="gradGrid"></ul>
-      <p class="gempty" id="gradEmpty" hidden>Graduate profiles will appear here soon.</p>
+      <p class="gempty" id="gradEmpty" hidden>Student profiles will appear here soon.</p>
     </div>
     <article class="gview gprof" id="gradProfile" hidden tabindex="-1" aria-labelledby="gpName">
-      <a class="gback" href="#graduates">← All graduates</a>
+      <a class="gback" href="#directory">← Student directory</a>
       <div class="gtop">
         <img class="gphoto" id="gpPhoto" alt="">
         <div class="ginfo">
@@ -1562,6 +1564,7 @@
     };
   }
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
+  const typeDirectory = makeTyper([document.getElementById("gradHead")]);
   const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
 
   // Links: Exhibition drop-down and the submission form
@@ -1739,7 +1742,7 @@
         gradGrid.replaceChildren(...graduates.map((g, i) => {
           const li = document.createElement("li");
           const a = document.createElement("a");
-          a.className = "gcard"; a.href = "#graduates/" + encodeURIComponent(g.slug);
+          a.className = "gcard"; a.href = "#directory/" + encodeURIComponent(g.slug);
           a.style.setProperty("--i", Math.min(i, 30));
           const img = document.createElement("img");
           img.src = g.photo; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
@@ -1790,7 +1793,7 @@
   const PAGES = {
     info:     { el: info, color: "#ffffff" },
     links:    { el: document.getElementById("links"), color: "#ffffff" },
-    graduates:{ el: document.getElementById("graduates"), color: "#ffffff" },
+    directory:{ el: document.getElementById("graduates"), color: "#ffffff" },
     sponsors: { el: document.getElementById("sponsors"), color: "#ffffff" },
   };
   let current = "home";
@@ -1817,14 +1820,14 @@
       if (name === "info") { alignInfo(); startTyping(); }
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
       if (name === "links") { alignInfo(); typeLinks(); }
-      if (name === "graduates") { alignInfo(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
+      if (name === "directory") { alignInfo(); typeDirectory(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
     }
   }
 
   function route(animate) {
     const name = pageOf(location.hash);
     const target = PAGES[name] ? name : "home";
-    if (target === current && target === "graduates") { loadGraduates().then(() => showGraduate(slugIn(location.hash))); return; }
+    if (target === current && target === "directory") { loadGraduates().then(() => showGraduate(slugIn(location.hash))); return; }
     if (target === current || washing) return;
     if (!animate) { setView(target); return; }
     const bgOf = name => name === "home" ? "#000000" : PAGES[name].color;
