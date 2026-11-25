@@ -31,9 +31,10 @@ GitHub credential that can write here. The server pulls; GitHub never pushes.
 | Path | What it is |
 |---|---|
 | `Dockerfile` | Bakes the site into `nginx:1.29-alpine`. Copies the whole repo, then strips the infrastructure back out, so new pages and assets ship without anyone editing it |
-| `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
+| `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `submissions` (the exhibition form) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
 | `deploy/nginx.conf` | Security headers, gzip, cache policy, the `www` → apex redirect, and the usage beacon |
 | `deploy/usage/` | The usage counters. `beacon.js` is added to every page by nginx as it serves it, so `index.html` never carries it. It sends one word per page view or click: no cookie, no storage, no identifier. `server.mjs` counts the words and serves the totals on `127.0.0.1:9094` for the monitoring page. If it is down, the page is unaffected |
+| `deploy/submissions/` | The exhibition form on the Links page. `server.mjs` checks each submission (full name, optional LinkedIn and place, project overview, headshot) and writes it to the `submissions-data` volume. The committee downloads everything as one zip from `/_s/export`: `submissions.xlsx` plus `photos/<Full Name>.jpg`, latest entry per person. Password: `SUBMISSIONS_KEY` in `.env`. `dev.mjs` runs the site and the form locally for trying changes |
 | `deploy/provision-tunnel.sh` | Creates or reuses the Cloudflare tunnel and DNS. Idempotent; safe to re-run |
 | `.env.example` | The variable names. The real `.env` lives only on the server and is gitignored |
 
@@ -52,9 +53,10 @@ beyond `127.0.0.1:8094` on the box itself, for local checking.
 
 The server's deploy poller refuses to deploy a commit whose GitHub checks did
 not pass, which is right for an application that takes input and holds data.
-STITCH is an information page: no forms, no accounts, no database. Bijin asked
-for a pipeline that reports rather than blocks, so the workflow always succeeds
-and puts what it noticed in the job summary.
+STITCH is an information page with one form, no accounts and no database
+beyond the submissions volume. Bijin asked for a pipeline that reports rather
+than blocks, so the workflow always succeeds and puts what it noticed in the
+job summary.
 
 The trade is explicit: **a commit that breaks the page will deploy.** The page
 is one file and a mistake is visible on the site immediately, which is the
@@ -77,6 +79,30 @@ curl -sI http://127.0.0.1:8094/        # the site without going through Cloudfla
 The stack is registered in `/etc/docker-stacks.conf`, so it comes back by itself
 after the box's Sunday-morning reboot, and on the monitoring page at
 `platform.nchconsultancy.com/admin/monitoring` as **STITCH Exhibition**.
+
+## Exhibition submissions
+
+Graduates fill in the form under **Links → Exhibition**. Each submission is a
+JSON record and a photo on the `submissions-data` volume, written atomically, so
+a record on disk always has its photo. Limits: 20 MB a photo (JPG, PNG, WebP or
+HEIC, checked by its bytes), 10 submissions an hour per address, 6 GB in all.
+
+```bash
+# once, before the first deploy that includes it: set the download password
+echo "SUBMISSIONS_KEY=$(openssl rand -base64 24)" >> ~/stitch-exhibition/.env
+
+# the committee's download, from anywhere (any username, the key as password)
+https://stitchexhibition.com/_s/export
+https://stitchexhibition.com/_s/status         # headcount and names, as JSON
+
+# back it up: this volume is the only data in the stack
+docker run --rm -v stitch-exhibition_submissions-data:/data -v "$PWD":/out alpine \
+  tar czf /out/stitch-submissions-$(date +%F).tgz -C /data .
+```
+
+With no `SUBMISSIONS_KEY`, the form still takes submissions and the download
+answers 404. If the service is down, the page is unaffected and the form says
+it could not send.
 
 ## Rebuilding the tunnel from nothing
 

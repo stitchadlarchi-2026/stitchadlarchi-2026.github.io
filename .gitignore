@@ -6,3 +6,6 @@
 .DS_Store
 node_modules/
 .claude/worktrees/
+
+# Local try-outs of the submission form (node deploy/submissions/dev.mjs)
+.dev-submissions/
