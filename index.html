@@ -592,12 +592,6 @@
                 <label for="xWebsite">Leave this empty</label>
                 <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
               </div>
-              <div class="xfield xcheck" id="xRightsField">
-                <input id="xRights" name="rights" type="checkbox" value="yes" aria-describedby="xRightsHint xRightsErr">
-                <label for="xRights">My project is my own work, or I have permission to share it</label>
-                <p class="xhint" id="xRightsHint">Needed if you upload a project. Leave out confidential client information, and check with anyone you worked with before sharing group work or their images.</p>
-                <p class="xerr" id="xRightsErr" aria-live="polite"></p>
-              </div>
               <div class="xprivacy">
                 <p class="xprivacy-title">How we use your details</p>
                 <ul>
@@ -1665,8 +1659,7 @@
       degreeOther.hidden = degree.value !== "other";
       if (!degreeOther.hidden) degreeOther.focus();
     });
-    const rights = document.getElementById("xRights");
-    const fields = { rights: "xRights", name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
+    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
     const project = document.getElementById("xProject");
     const projectName = document.getElementById("xProjectName");
     const projectHint = projectName.textContent;
@@ -1728,7 +1721,6 @@
       else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
       const pf = project.files[0];
       if (pf && pf.size > MAX_PROJECT) errs.project = "That file is too big. The limit is 30 MB.";
-      if (pf && !rights.checked) errs.rights = "Please confirm you can share this project.";
       return errs;
     }
 
