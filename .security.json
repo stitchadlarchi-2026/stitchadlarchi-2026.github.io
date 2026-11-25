@@ -1,0 +1,16 @@
+{
+  "lane": "B",
+  "owner": "client: STITCH Exhibition",
+  "data_classes": [
+    "graduates' full names",
+    "headshot photos, location and camera metadata removed on upload",
+    "optional LinkedIn URL and place of origin",
+    "project overviews (up to 150 words)",
+    "keyed HMAC of client IP addresses, in memory only, for rate limits"
+  ],
+  "public_hostnames": ["stitchexhibition.com", "www.stitchexhibition.com"],
+  "retention": "every submission deleted after 2027-01-31 by the submissions service",
+  "recorded": "2026-11-25",
+  "previous": "Lane A from 2026-09-29 to 2026-11-25, when the site took no input",
+  "skill": "cybersecurity"
+}

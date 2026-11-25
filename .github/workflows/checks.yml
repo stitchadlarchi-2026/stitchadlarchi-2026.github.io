@@ -1,16 +1,17 @@
 # The deploy signal for stitchexhibition.com.
 #
-# This is a deliberately light workflow, and the reason is worth writing down.
 # The house pipeline gates a deploy on a check suite: the poller on the server
-# reads this commit's checks over GitHub's public API and refuses to deploy a
-# commit whose checks did not pass. STITCH is a static information page with no
-# inputs, no accounts and no data, designed by someone who does not work on that
-# server, so Bijin asked for a pipeline that never blocks her. So this workflow
-# reports and never fails: it gives the poller the signal it needs to deploy,
-# and it tells you what it noticed in the job summary rather than in a red X.
+# reads this commit's `site` check over GitHub's public API and refuses to
+# deploy a commit whose check did not pass. Breeze designs the page and does not
+# work on that server, so Bijin asked for a pipeline that never blocks her page
+# edits: the site notes are advisory, reported in the job summary rather than as
+# a red X.
 #
-# If something here ever should stop a deploy, delete the `exit 0` from that
-# step. Nothing else needs to change.
+# Two steps do block, and only for the server code under deploy/: the server
+# code must parse and the images must build. Since 2026-11-25 the stack holds
+# exhibition submissions, and a server that cannot start would lose them.
+# Nothing in index.html or the assets can fail those steps.
+
 name: checks
 
 on:
@@ -86,7 +87,7 @@ jobs:
                       notes.append(f"`{page}` points at `{ref}`, which is not in the repository.")
 
           print("## STITCH — site check\n")
-          print("Advisory only. This workflow never fails a deploy.\n")
+          print("Advisory only. The notes below never fail a deploy.\n")
           print("### Pages\n")
           for line in ok: print(f"- {line}")
           print("\n### Notes\n")
@@ -97,24 +98,26 @@ jobs:
           PY
           exit 0
 
-      - name: Build the image the server will build
-        shell: bash {0}          # advisory: a broken image is worth knowing about, not worth blocking on
+      # The two steps below are the exception to "never fails". Since the
+      # exhibition form, this stack holds people's submissions, and a server that
+      # cannot start loses them until someone notices. So a commit whose server
+      # code does not parse, or whose images do not build, does not deploy: the
+      # server keeps running the last commit that did. Changes to index.html and
+      # the site's assets can never fail these steps.
+      - name: Server code parses
         run: |
-          set +e
-          out=$(docker build -t stitch-check . 2>&1)
-          code=$?
-          {
-            echo ""
-            echo "### Docker image"
-            echo ""
-            if [ $code -eq 0 ]; then
-              echo "- Builds. This is the same Dockerfile the server uses."
-            else
-              echo "- **Did not build.** The server will deploy the last image that did."
-              echo ""
-              echo '```'
-              echo "$out" | tail -25
-              echo '```'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 0
+          set -e
+          for f in deploy/*/*.mjs; do
+            node --check "$f"
+            echo "- \`$f\` parses" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Images the server will build
+        run: |
+          set -e
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Docker images" >> "$GITHUB_STEP_SUMMARY"
+          docker build -q -t stitch-check-web . > /dev/null
+          docker build -q -t stitch-check-usage deploy/usage > /dev/null
+          docker build -q -t stitch-check-submissions deploy/submissions > /dev/null
+          echo "- web, usage and submissions all build." >> "$GITHUB_STEP_SUMMARY"

@@ -49,19 +49,19 @@ Both are proxied CNAMEs onto the `stitch-exhibition` named tunnel, on Bijin's
 own Cloudflare account. No port is open on the router; nothing is published
 beyond `127.0.0.1:8094` on the box itself, for local checking.
 
-## Why the checks never fail
+## What the checks block, and what they don't
 
-The server's deploy poller refuses to deploy a commit whose GitHub checks did
-not pass, which is right for an application that takes input and holds data.
-STITCH is an information page with one form, no accounts and no database
-beyond the submissions volume. Bijin asked for a pipeline that reports rather
-than blocks, so the workflow always succeeds and puts what it noticed in the
-job summary.
+The server's deploy poller refuses to deploy a commit whose GitHub `site` check
+did not pass. Bijin asked for a pipeline that never blocks the page, so the site
+notes (titles, missing files) are advisory and go in the job summary.
 
-The trade is explicit: **a commit that breaks the page will deploy.** The page
-is one file and a mistake is visible on the site immediately, which is the
-cheapest possible feedback loop. To make something here block a deploy, remove
-the `exit 0` from that step in `.github/workflows/checks.yml`.
+Two things do block, and only for the server code under `deploy/`: every
+`deploy/*/*.mjs` must parse, and the web, usage and submissions images must
+build. The stack holds exhibition submissions, and a server that cannot start
+would lose them. A blocked commit leaves the last good one running. Nothing in
+`index.html` or the assets can fail these steps, so **a commit that breaks the
+page will still deploy**: the page is one file, and a mistake shows on the site
+straight away.
 
 ## On the server
 
@@ -84,24 +84,38 @@ after the box's Sunday-morning reboot, and on the monitoring page at
 
 Graduates fill in the form under **Links → Exhibition**. Each submission is a
 JSON record and a photo on the `submissions-data` volume, written atomically, so
-a record on disk always has its photo. Limits: 20 MB a photo (JPG, PNG, WebP or
-HEIC, checked by its bytes), 10 submissions an hour per address, 6 GB in all.
+a record on disk always has its photo. The decisions behind the limits are in
+`SECURITY.md`.
+
+- **Photos:** JPG, PNG or WebP, up to 20 MB, checked by their bytes. Location,
+  camera and other metadata are removed before the photo is saved. HEIC is
+  refused; iPhones convert to JPEG by themselves for this form.
+- **Limits:** 20 submissions a minute per address, one upload processed at a
+  time (up to 40 wait), 3.5 GB in all.
+- **Bot check:** Cloudflare Turnstile, widget **STITCH exhibition form**. The
+  stack will not start without `TURNSTILE_SECRET` in `.env`.
+- **Deletion:** after 31 January 2027 the service empties the volume and the
+  form closes, as the notice on the form promises. To move the date, change
+  `DELETE_AFTER` in `server.mjs`, the notice in `index.html`, and `CONSENT` in
+  `server.mjs`, together.
+- **Backups:** nightly, by `nch-backup-all` on the server.
 
 ```bash
-# once, before the first deploy that includes it: set the download password
+# set the download password, without printing it (once; already done 2026-11-25)
 echo "SUBMISSIONS_KEY=$(openssl rand -base64 24)" >> ~/stitch-exhibition/.env
 
 # the committee's download, from anywhere (any username, the key as password)
-https://stitchexhibition.com/_s/export
-https://stitchexhibition.com/_s/status         # headcount and names, as JSON
+https://stitchexhibition.com/_s/export      # submissions.xlsx + photos/<Full Name>.jpg
+https://stitchexhibition.com/_s/status      # headcount and names, as JSON
 
-# back it up: this volume is the only data in the stack
-docker run --rm -v stitch-exhibition_submissions-data:/data -v "$PWD":/out alpine \
-  tar czf /out/stitch-submissions-$(date +%F).tgz -C /data .
+# remove one person on request: find their records, then delete each record and its photo
+docker exec stitch-exhibition-submissions-1 grep -l '"name": "Full Name"' /data/*.json
+docker exec stitch-exhibition-submissions-1 rm /data/<id>.json /data/<id>.jpg
 ```
 
 With no `SUBMISSIONS_KEY`, the form still takes submissions and the download
-answers 404. If the service is down, the page is unaffected and the form says
+answers 404. Five wrong passwords in a minute lock that address out for the rest
+of the minute. If the service is down, the page is unaffected and the form says
 it could not send.
 
 ## Rebuilding the tunnel from nothing

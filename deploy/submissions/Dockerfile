@@ -3,7 +3,7 @@
 FROM node:22-alpine
 
 WORKDIR /app
-COPY server.mjs ./
+COPY server.mjs metadata.mjs ./
 
 # The volume mounts here. Made in the image and owned by `node`, so a fresh
 # named volume starts out writable by the process.

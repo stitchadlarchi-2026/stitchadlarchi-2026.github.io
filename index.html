@@ -256,6 +256,12 @@
   .lnks .xfile:focus-visible, .lnks .xsubmit:focus-visible, .lnks .xagain:focus-visible, .lnks .xdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .lnks .xstatus { margin: 0; font-size: .85em; text-transform: none; letter-spacing: 0; color: var(--red); min-height: 1.2em; }
   .lnks .xtrap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .lnks .xnotice { gap: .7em; }
+  .lnks .xnotice .xlabel { margin: 0; }
+  .lnks .xnotice a { color: inherit; text-underline-offset: 3px; }
+  .lnks .xcheck { display: flex; gap: .7em; align-items: flex-start; text-transform: none; letter-spacing: 0; line-height: 1.45; cursor: pointer; }
+  .lnks .xcheck input { accent-color: var(--red); width: 1.1em; height: 1.1em; margin: .15em 0 0; flex: none; }
+  .lnks .xcheck input:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
   .lnks .xdone .xdone-title { text-transform: uppercase; letter-spacing: .03em; color: var(--red); }
@@ -324,6 +330,8 @@
     .tagline { flex-direction: column; align-items: center; gap: 6px; }
   }
 </style>
+<!-- Bot check for the exhibition form (Links → Exhibition). -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body data-view="home">
 <nav class="nav" id="nav" aria-label="Main menu">
@@ -462,15 +470,27 @@
               </div>
               <div class="xfield">
                 <span class="xlabel" id="xPhotoLabel">Your headshot <span class="req" aria-hidden="true">*</span></span>
-                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.jpg,.jpeg,.png,.webp" required class="sr-only" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
+                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="sr-only" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
                 <label for="xPhoto" class="xfile">[ Choose photo ]</label>
-                <p class="xhint" id="xPhotoName">JPG, PNG or HEIC, up to 20 MB. We rename it to your full name.</p>
+                <p class="xhint" id="xPhotoName">JPG, PNG or WebP, up to 20 MB. iPhone photos are converted for you. We rename it to your full name.</p>
                 <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
                 <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
               </div>
+              <div class="xfield xnotice" id="xNotice">
+                <p class="xlabel">How we use your details</p>
+                <p class="xhint">The STITCH committee collects your name, headshot and project overview, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
+                <p class="xhint">Your details are stored on a server in Australia, run for STITCH by NCH Consultancy, with encrypted backups held by Cloudflare. We remove location and camera data from your photo when you send it. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>.</p>
+                <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
+                <label class="xcheck" for="xConsent">
+                  <input id="xConsent" name="consent" type="checkbox" value="yes" required aria-describedby="xNotice xConsentErr">
+                  <span>I agree to STITCH using my details as described above. <span class="req" aria-hidden="true">*</span></span>
+                </label>
+                <p class="xerr" id="xConsentErr" aria-live="polite"></p>
+              </div>
+              <div class="cf-turnstile" data-sitekey="0x4AAAAAAGR6oCousCtk41xY" data-theme="light"></div>
               <button type="submit" class="xsubmit" id="xSubmit">[ Submit ]</button>
               <p class="xstatus" id="xStatus" role="status" aria-live="polite"></p>
             </form>
@@ -1484,7 +1504,7 @@
     const photoHint = photoName.textContent;
     const overview = document.getElementById("xOverview");
     const count = document.getElementById("xCount");
-    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto" };
+    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", consent: "xConsent" };
     const MAX_PHOTO = 20 * 1024 * 1024;
 
     const MAX_WORDS = 150;
@@ -1499,6 +1519,8 @@
       photoName.textContent = f ? f.name + " (" + (f.size / 1048576).toFixed(1) + " MB)" : photoHint;
       showError("photo", f && f.size > MAX_PHOTO ? "That photo is too big. The limit is 20 MB." : "");
     });
+
+    form.consent.addEventListener("change", () => { if (form.consent.checked) showError("consent", ""); });
 
     function showError(key, msg) {
       const input = document.getElementById(fields[key]);
@@ -1517,6 +1539,7 @@
       const f = photo.files[0];
       if (!f) errs.photo = "Please attach your headshot.";
       else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
+      if (!form.consent.checked) errs.consent = "Please tick the box to agree to how your details are used.";
       return errs;
     }
 
@@ -1529,6 +1552,12 @@
         status.textContent = "Some fields need another look.";
         const first = document.getElementById(fields[Object.keys(errs)[0]]);
         first.focus();
+        return;
+      }
+      // Turnstile writes its token into the form when its check passes.
+      const robot = form.querySelector('[name="cf-turnstile-response"]');
+      if (!robot || !robot.value) {
+        status.textContent = "Still checking you are not a robot. Please wait a moment and press Submit again.";
         return;
       }
       submitBtn.disabled = true;
@@ -1553,6 +1582,8 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "[ Submit ]";
+        // A Turnstile token works once; get a fresh one for the next attempt.
+        if (window.turnstile) window.turnstile.reset();
       }
     });
 

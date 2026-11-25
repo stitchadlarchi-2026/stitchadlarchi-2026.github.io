@@ -38,6 +38,11 @@ services:
       - /var/cache/nginx:size=16m
       - /var/run:size=1m
       - /tmp:size=8m
+    # Uploads to the exhibition form are spooled here before nginx hands them
+    # on. On disk, not tmpfs: tmpfs counts against mem_limit, and one photo is
+    # 20 MB. nginx deletes each file once the request is done.
+    volumes:
+      - web-body-temp:/var/lib/nginx-body
     logging:
       driver: json-file
       options:
@@ -94,10 +99,14 @@ services:
     restart: unless-stopped
     environment:
       SUBMISSIONS_KEY: ${SUBMISSIONS_KEY:-}
+      # Required: a public form without bot protection does not deploy.
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:?set TURNSTILE_SECRET in .env}
     volumes:
       - submissions-data:/data
-    mem_limit: 192m
-    memswap_limit: 192m
+    # One 20 MB upload is parsed at a time (MAX_PARSING in server.mjs) and
+    # peaks near 120 MB; the rest wait their turn rather than share this.
+    mem_limit: 256m
+    memswap_limit: 256m
     pids_limit: 64
     cpus: 0.5
     security_opt:
@@ -141,6 +150,8 @@ services:
         max-file: '3'
 
 volumes:
+  # nginx's upload spool. Scratch space only; safe to delete.
+  web-body-temp:
   # Every exhibition submission and headshot. Back this up with the box; it is
   # the only thing in this stack that cannot be rebuilt from git.
   submissions-data:

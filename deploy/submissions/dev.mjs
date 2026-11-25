@@ -15,7 +15,7 @@
 import { createServer, request } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,7 +25,7 @@ const PORT = Number(process.env.PORT ?? 8000);
 
 const child = spawn(process.execPath, [join(here, 'server.mjs')], {
   stdio: 'inherit',
-  env: { ...process.env, DATA_DIR: join(root, '.dev-submissions'), SUBMISSIONS_KEY: 'dev', FORM_PORT: '18081', ADMIN_PORT: '19091' },
+  env: { ...process.env, DATA_DIR: join(root, '.dev-submissions'), SUBMISSIONS_KEY: 'dev', TURNSTILE_SECRET: '', FORM_PORT: '18081', ADMIN_PORT: '19091' },
 });
 
 const types = {
@@ -60,6 +60,14 @@ createServer(async (req, res) => {
     return;
   }
   res.writeHead(200, { 'content-type': types[extname(file).toLowerCase()] ?? 'application/octet-stream', 'cache-control': 'no-store' });
+  if (extname(file).toLowerCase() === '.html') {
+    // The live Turnstile key only works on stitchexhibition.com. Locally, use
+    // Cloudflare's test key, which always passes; the server skips its own
+    // check here because dev runs it with no TURNSTILE_SECRET.
+    const html = await readFile(file, 'utf8');
+    res.end(html.replace(/data-sitekey="[^"]*"/g, 'data-sitekey="1x00000000000000000000AA"'));
+    return;
+  }
   createReadStream(file).pipe(res);
 }).listen(PORT, '127.0.0.1', () => console.log(`STITCH site with the form: http://localhost:${PORT}/#links`));
 

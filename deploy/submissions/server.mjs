@@ -23,31 +23,61 @@
 import { createServer } from 'node:http';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
+import { strip } from './metadata.mjs';
 
 const FORM_PORT = Number(process.env.FORM_PORT ?? 8081);
 const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? 9091);
 const DATA = process.env.DATA_DIR ?? '/data';
 const KEY = process.env.SUBMISSIONS_KEY ?? '';
+/** Cloudflare Turnstile. With no secret set, the check is skipped (local try-outs only). */
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET ?? '';
+/**
+ * The day every submission is deleted. After it, the form is closed and the
+ * volume is emptied, by this process, hourly. The collection notice on the page
+ * promises this date: change both together.
+ */
+const DELETE_AFTER = new Date(process.env.DELETE_AFTER ?? '2027-01-31T23:59:59+10:30');
 
 /** Pixieset full-resolution downloads are a few MB; leave room for a phone photo. */
 const MAX_PHOTO = 20 * 1024 * 1024;
 const MAX_BODY = MAX_PHOTO + 64 * 1024;
-/** A ceiling on the volume, so a flood cannot fill the box's disk. */
-const MAX_TOTAL = 6 * 1024 * 1024 * 1024;
-/** Submissions one address may make in an hour. */
-const PER_HOUR = 10;
+/**
+ * A ceiling on the volume, so a flood cannot fill the box's disk. Kept under
+ * 4 GB because the export is a plain zip, whose offsets cannot pass 4 GB.
+ */
+const MAX_TOTAL = 3.5 * 1024 * 1024 * 1024;
+/**
+ * Submissions one address may make in a minute. A whole cohort on campus
+ * Wi-Fi arrives from one university address, so this is per minute, not per
+ * hour: it stops a script, not a class.
+ */
+const PER_MINUTE = 20;
+/** Wrong passwords one address may try in a minute on the committee's download. */
+const AUTH_PER_MINUTE = 5;
+/**
+ * Uploads parsed at once. Each holds the whole body in memory four or five
+ * times over while it is read, so this, not the container limit, is what keeps
+ * a rush of 20 MB photos from running the process out of memory. The rest wait.
+ */
+const MAX_PARSING = 1;
+const MAX_WAITING = 40;
 
 const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 1500 };
 /** The project overview is a wall label, not an essay. */
 const MAX_WORDS = 150;
+/** Recorded with each submission. Keep in step with the notice in index.html. */
+const CONSENT = 'exhibition labels and catalogue, stitchexhibition.com, STITCH social media; deleted after 31 January 2027';
 
 const salt = randomBytes(32);
 const budget = new Map();
+const authFails = new Map();
 let budgetSince = Date.now();
 let totalBytes = 0;
+let parsing = 0;
+const waiting = [];
 
 // ---------------------------------------------------------------- helpers
 
@@ -93,10 +123,9 @@ function imageType(buf) {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
   if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
   if (buf.length >= 12 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'webp';
-  if (buf.length >= 12 && buf.toString('latin1', 4, 8) === 'ftyp') {
-    const brand = buf.toString('latin1', 8, 12);
-    if (['heic', 'heix', 'hevc', 'heim', 'heis', 'mif1', 'msf1'].includes(brand)) return 'heic';
-  }
+  // HEIC is refused: its metadata cannot be stripped with builtins, and Windows
+  // opens it badly. An iPhone converts to JPEG by itself when the form does not
+  // list HEIC as accepted, so in practice nobody has to do anything.
   return null;
 }
 
@@ -123,17 +152,59 @@ function address(req) {
   return req.socket.remoteAddress ?? '';
 }
 
-function allowed(req) {
+const fingerprint = (req) => createHmac('sha256', salt).update(address(req)).digest('base64url').slice(0, 16);
+
+/** Both per-address budgets reset together, every minute. */
+function minuteTick() {
   const now = Date.now();
-  if (now - budgetSince > 60 * 60 * 1000) {
+  if (now - budgetSince > 60 * 1000) {
     budget.clear();
+    authFails.clear();
     budgetSince = now;
   }
-  const id = createHmac('sha256', salt).update(address(req)).digest('base64url').slice(0, 16);
+}
+
+function allowed(req) {
+  minuteTick();
+  const id = fingerprint(req);
   const spent = budget.get(id) ?? 0;
-  if (spent >= PER_HOUR) return false;
+  if (spent >= PER_MINUTE) return false;
   if (budget.size < 50_000) budget.set(id, spent + 1);
   return true;
+}
+
+/** A place to parse one upload, or null when too many are already queued. */
+function slot() {
+  if (parsing < MAX_PARSING) {
+    parsing += 1;
+    return Promise.resolve(release);
+  }
+  if (waiting.length >= MAX_WAITING) return null;
+  return new Promise((resolve) => waiting.push(() => resolve(release)));
+}
+function release() {
+  const next = waiting.shift();
+  if (next) next();
+  else parsing -= 1;
+}
+
+const closed = () => Date.now() > DELETE_AFTER.getTime();
+
+/** Ask Cloudflare whether the browser passed Turnstile. Fails closed. */
+async function human(token, req) {
+  if (!TURNSTILE_SECRET) return true;
+  if (!token) return false;
+  try {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token, remoteip: address(req) }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return (await r.json()).success === true;
+  } catch (e) {
+    console.error('turnstile check failed', e.message);
+    return false;
+  }
 }
 
 function json(res, status, body) {
@@ -195,10 +266,22 @@ async function measure() {
 // ---------------------------------------------------------------- submit
 
 async function submit(req, res) {
-  if (!allowed(req)) return json(res, 429, { error: 'Too many submissions from here. Try again in an hour.' });
+  if (closed()) return json(res, 410, { error: 'Submissions have closed.' });
+  if (!allowed(req)) return json(res, 429, { error: 'Too many submissions from here. Please wait a minute and try again.' });
   const type = String(req.headers['content-type'] ?? '');
   if (!type.startsWith('multipart/form-data')) return json(res, 415, { error: 'Expected a form.' });
 
+  const wait = slot();
+  if (!wait) return json(res, 503, { error: 'Lots of people are sending right now. Please try again in a minute.' });
+  const done = await wait;
+  try {
+    await accept(req, res, type);
+  } finally {
+    done();
+  }
+}
+
+async function accept(req, res, type) {
   let form;
   try {
     const body = await readBody(req, MAX_BODY);
@@ -210,6 +293,9 @@ async function submit(req, res) {
 
   // Bots fill every field; people never see this one.
   if (oneLine(form.get('website'), 200)) return json(res, 200, { ok: true });
+  if (!(await human(oneLine(form.get('cf-turnstile-response'), 4096), req))) {
+    return json(res, 403, { error: 'We could not confirm you are not a robot. Please reload the page and try again.' });
+  }
 
   const name = oneLine(form.get('name'), LIMITS.name);
   const from = oneLine(form.get('from'), LIMITS.from);
@@ -224,11 +310,21 @@ async function submit(req, res) {
   else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
   if (!photo || typeof photo === 'string' || photo.size === 0) problems.photo = 'Please attach your headshot.';
   else if (photo.size > MAX_PHOTO) problems.photo = 'That photo is too big. The limit is 20 MB.';
+  if (form.get('consent') !== 'yes') problems.consent = 'Please tick the box to agree to how your details are used.';
   if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
 
-  const bytes = Buffer.from(await photo.arrayBuffer());
-  const ext = imageType(bytes);
-  if (!ext) return json(res, 422, { error: 'Some fields need another look.', fields: { photo: 'Please upload a JPG, PNG, WebP or HEIC photo.' } });
+  const raw = Buffer.from(await photo.arrayBuffer());
+  const ext = imageType(raw);
+  const badPhoto = { error: 'Some fields need another look.', fields: { photo: 'Please upload a JPG, PNG or WebP photo.' } };
+  if (!ext) return json(res, 422, badPhoto);
+  // Location and device data are removed before anything is written. A photo
+  // that cannot be parsed is refused rather than kept with its metadata.
+  let bytes;
+  try {
+    bytes = strip(raw, ext);
+  } catch {
+    return json(res, 422, badPhoto);
+  }
   if (totalBytes + bytes.length > MAX_TOTAL) return json(res, 507, { error: 'Submissions are full. Please contact the committee.' });
 
   const submittedAt = new Date().toISOString();
@@ -240,7 +336,10 @@ async function submit(req, res) {
     linkedin: linkedin ?? '',
     from,
     overview,
-    photo: { file: `${id}.${ext}`, ext, size: bytes.length, crc: crc32(bytes), originalName: oneLine(photo.name, 200) },
+    /** What the person agreed to, in the words of the notice they ticked. */
+    consent: CONSENT,
+    // The browser's file name is not kept: it can be anything, and nobody needs it.
+    photo: { file: `${id}.${ext}`, ext, size: bytes.length, crc: crc32(bytes) },
   };
 
   // Photo first, record last, each written beside its name and then renamed into
@@ -441,10 +540,20 @@ const adminServer = createServer((req, res) => {
     res.writeHead(404).end();
     return;
   }
+  minuteTick();
+  const who = fingerprint(req);
+  if ((authFails.get(who) ?? 0) >= AUTH_PER_MINUTE) {
+    res.writeHead(429, { 'retry-after': '60', 'cache-control': 'no-store' }).end();
+    return;
+  }
   if (!authorised(req)) {
+    // A browser's first request carries no password at all; only a wrong one counts.
+    if (req.headers.authorization && authFails.size < 50_000) authFails.set(who, (authFails.get(who) ?? 0) + 1);
+    if (req.headers.authorization) console.log(`export: wrong password from ${who}`);
     res.writeHead(401, { 'www-authenticate': 'Basic realm="STITCH submissions", charset="UTF-8"', 'cache-control': 'no-store' }).end();
     return;
   }
+  console.log(`${path}: opened by ${who}`);
   const run =
     path === '/export'
       ? exportZip(res)
@@ -458,8 +567,27 @@ const adminServer = createServer((req, res) => {
   });
 });
 
+/**
+ * The retention promise, kept by the process that holds the data: once the
+ * date in the collection notice has passed, every file on the volume goes.
+ * Checked at start and hourly, so a box that was off on the day still does it.
+ * Backups already taken are not touched here; see SECURITY.md.
+ */
+async function purgeIfDue() {
+  if (!closed()) return;
+  let n = 0;
+  for (const f of await readdir(DATA)) {
+    await rm(join(DATA, f), { force: true, recursive: true });
+    n += 1;
+  }
+  totalBytes = 0;
+  if (n) console.log(`retention: deleted ${n} files (past ${DELETE_AFTER.toISOString()})`);
+}
+
 await mkdir(DATA, { recursive: true });
+await purgeIfDue();
 await measure();
+setInterval(() => purgeIfDue().catch((e) => console.error('retention failed', e)), 60 * 60 * 1000).unref();
 formServer.requestTimeout = 5 * 60 * 1000;
 formServer.listen(FORM_PORT, '0.0.0.0', () => console.log(`form on :${FORM_PORT}/submit`));
 adminServer.listen(ADMIN_PORT, '0.0.0.0', () => console.log(`admin on :${ADMIN_PORT}${KEY ? '' : ' (no SUBMISSIONS_KEY: export off)'}`));
