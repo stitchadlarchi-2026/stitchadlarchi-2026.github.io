@@ -6,7 +6,8 @@
  * then open http://localhost:8000/#links. It serves the page the way nginx
  * does and runs the submissions service beside it, saving into
  * `.dev-submissions/` in this folder (gitignored). The download is at
- * http://localhost:8000/_s/export with the password `dev`.
+ * http://localhost:8000/_s/export, and the review page at
+ * http://localhost:8000/_s/review, both with the password `dev`.
  *
  * Nothing here is part of the live site: the Dockerfile strips `deploy/` out
  * of the image, and the server never runs this file.
@@ -33,11 +34,13 @@ const types = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
   '.avif': 'image/avif', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2',
 };
-const routes = { '/_s/submit': [18081, '/submit'], '/_s/export': [19091, '/export'], '/_s/status': [19091, '/status'] };
+const routes = { '/_s/submit': [18081, '/submit'], '/_s/graduates.json': [18081, '/graduates.json'], '/_s/export': [19091, '/export'], '/_s/status': [19091, '/status'] };
+const prefixes = [['/_s/media/', 18081], ['/_s/review', 19091]];
 
 createServer(async (req, res) => {
   const path = decodeURIComponent((req.url ?? '/').split('?')[0]);
-  const route = routes[path];
+  const pre = prefixes.find(([p]) => path.startsWith(p));
+  const route = routes[path] ?? (pre && [pre[1], (req.url ?? '').slice(3)]);
   if (route) {
     const up = request({ host: '127.0.0.1', port: route[0], path: route[1], method: req.method, headers: req.headers }, (r) => {
       res.writeHead(r.statusCode ?? 502, r.headers);

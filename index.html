@@ -38,7 +38,7 @@
   /* ---------- top menu: four equal columns, each label centred in its third ---------- */
   .nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
     opacity: 0; transition: opacity 1.2s ease;
   }
@@ -200,6 +200,49 @@
   }
   @media (max-width: 700px) { .lnks { padding-inline: var(--x1, 16px); } }
 
+  /* ---------- graduates page: a grid of headshots, each opening its profile ---------- */
+  .grads {
+    color: var(--ink); font-family: var(--mono); text-transform: uppercase;
+    font-size: clamp(11px, min(1.15vw, 1.95vh), 17px); letter-spacing: .03em;
+    padding-block: clamp(92px, 14vh, 150px) clamp(40px, 8vh, 96px);
+    padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
+  }
+  .grads .ggrid {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 13vw, 190px), 1fr));
+    gap: clamp(22px, 3.2vw, 40px) clamp(14px, 2vw, 28px);
+  }
+  .grads .gcard { display: grid; gap: .55em; color: var(--ink); text-decoration: none; }
+  .grads .gcard img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #f1f1f1; transition: opacity .2s ease; }
+  .grads .gcard:hover img { opacity: .82; }
+  .grads .gcard:hover .gc-name { color: var(--red); }
+  .grads .gcard:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  .grads .gc-name { line-height: 1.3; }
+  .grads .gc-from { color: #888; font-size: .8em; margin-top: -.25em; }
+  .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
+  .grads .ggrid.in .gcard { opacity: 1; transform: none; }
+  .grads .gempty { margin: 0; color: #888; }
+  .grads .gback { color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: clamp(20px, 4vh, 40px); }
+  .grads .gback:hover { color: var(--red); }
+  .grads .gback:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .grads .gprof { outline: none; }
+  .grads .gtop { display: grid; grid-template-columns: minmax(0, clamp(200px, 26vw, 380px)) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
+  .grads .gphoto { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #f1f1f1; display: block; }
+  .grads .ginfo { display: grid; gap: 1em; justify-items: start; max-width: 38em; }
+  .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
+  .grads .gfrom { margin: -.4em 0 0; color: #888; }
+  .grads .gfrom:empty { display: none; }
+  .grads .gov { margin: .4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.6; white-space: pre-line; }
+  .grads .gproj { display: block; margin-top: clamp(28px, 5vh, 56px); }
+  .grads .gproj img { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; object-position: left top; background: #f7f7f7; }
+  .grads .gproj:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  @media (max-width: 700px) {
+    .grads { padding-inline: var(--x1, 16px); }
+    .grads .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
+    .grads .gtop { grid-template-columns: minmax(0, 1fr); }
+    .grads .gphoto { max-width: 300px; }
+  }
+
   /* ---------- links page: Exhibition drop-down with the submission form ---------- */
   .lnks .xhb { display: grid; justify-items: start; width: 100%; }
   .lnks .xdrop {
@@ -255,6 +298,11 @@
   .lnks .xagain:hover { color: var(--red); }
   .lnks .xfile:focus-visible, .lnks .xsubmit:focus-visible, .lnks .xagain:focus-visible, .lnks .xdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .lnks .xstatus { margin: 0; font-size: .85em; text-transform: none; letter-spacing: 0; color: var(--red); min-height: 1.2em; }
+  .lnks .xcheck { grid-template-columns: auto 1fr; column-gap: .7em; align-items: start; }
+  .lnks .xcheck input { width: 1.05em; height: 1.05em; margin: .15em 0 0; accent-color: var(--red); }
+  .lnks .xcheck label { font-size: .85em; line-height: 1.45; cursor: pointer; }
+  .lnks .xcheck .xhint { grid-column: 2; }
+  .lnks .xdone a { color: var(--red); }
   .lnks .xtrap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
@@ -319,6 +367,10 @@
   @media (max-width: 700px) {
     .nav { display: flex; justify-content: space-between; }
   }
+  @media (max-width: 440px) {
+    .nav { padding-inline: 10px; }
+    .nav a, .nav .email { letter-spacing: .04em; padding-inline: 2px; font-size: min(10.5px, 2.75vw); }
+  }
   @media (max-width: 600px) {
     .logo-wrap { width: calc(100vw - 32px); }
     .tagline { flex-direction: column; align-items: center; gap: 6px; }
@@ -330,6 +382,7 @@
   <a href="#home">Home</a>
   <a href="#info">Info</a>
   <a href="#links">Links</a>
+  <a href="#graduates">Graduates</a>
   <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
@@ -467,6 +520,18 @@
                 <p class="xhint" id="xPhotoName">JPG, PNG or HEIC, up to 20 MB. We rename it to your full name.</p>
                 <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
               </div>
+              <div class="xfield">
+                <span class="xlabel" id="xProjectLabel">Your project <span class="opt">(optional)</span></span>
+                <input id="xProject" name="project" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" class="sr-only" aria-labelledby="xProjectLabel" aria-describedby="xProjectName xProjectErr">
+                <label for="xProject" class="xfile">[ Choose file ]</label>
+                <p class="xhint" id="xProjectName">One image or one PDF, up to 30 MB. A high-quality JPG or PNG shows best on the website.</p>
+                <p class="xerr" id="xProjectErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield xcheck">
+                <input id="xPublic" name="public" type="checkbox" value="yes" aria-describedby="xPublicHint">
+                <label for="xPublic">Show my profile and project on the STITCH website</label>
+                <p class="xhint" id="xPublicHint">Your photo, name, where you’re from, LinkedIn, overview and project appear on the Graduates page for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
+              </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
                 <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
@@ -478,6 +543,7 @@
             <div class="xdone" id="xDone" hidden tabindex="-1">
               <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
               <p>We have your details and your photo, saved as <span id="xDoneFile"></span>.</p>
+              <p id="xDonePublic" hidden>Your profile will appear on the <a href="#graduates">Graduates</a> page once the committee has checked it.</p>
               <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
               <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
             </div>
@@ -485,6 +551,30 @@
         </div>
       </div>
     </div>
+  </section>
+</main>
+
+<main class="page" id="graduates" hidden aria-label="Graduates">
+  <section class="grads" id="gradText">
+    <h1 class="sr-only">Graduates</h1>
+    <div class="gview" id="gradList">
+      <ul class="ggrid" id="gradGrid"></ul>
+      <p class="gempty" id="gradEmpty" hidden>Graduate profiles will appear here soon.</p>
+    </div>
+    <article class="gview gprof" id="gradProfile" hidden tabindex="-1" aria-labelledby="gpName">
+      <a class="gback" href="#graduates">← All graduates</a>
+      <div class="gtop">
+        <img class="gphoto" id="gpPhoto" alt="">
+        <div class="ginfo">
+          <h2 class="gname" id="gpName"></h2>
+          <p class="gfrom" id="gpFrom"></p>
+          <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
+          <p class="gov" id="gpOverview"></p>
+          <a class="ilink" id="gpPdf" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>View project (PDF)</span></a>
+        </div>
+      </div>
+      <a class="gproj" id="gpProject" target="_blank" rel="noopener" hidden aria-label="Open the project image full size (opens in a new tab)"><img id="gpProjectImg" alt=""></a>
+    </article>
   </section>
 </main>
 
@@ -1405,7 +1495,7 @@
   function alignInfo() {
     const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
     const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
-    [infoText, document.getElementById("sponsText"), document.getElementById("linksText")].forEach(el => {
+    [infoText, document.getElementById("sponsText"), document.getElementById("linksText"), document.getElementById("gradText")].forEach(el => {
       el.style.setProperty("--x1", x1 + "px");
       el.style.setProperty("--c1", (x2 - x1) + "px");
     });
@@ -1495,7 +1585,32 @@
     const photoHint = photoName.textContent;
     const overview = document.getElementById("xOverview");
     const count = document.getElementById("xCount");
-    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto" };
+    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
+    const project = document.getElementById("xProject");
+    const projectName = document.getElementById("xProjectName");
+    const projectHint = projectName.textContent;
+    const MAX_PROJECT = 30 * 1024 * 1024;
+    project.addEventListener("change", () => {
+      const f = project.files[0];
+      projectName.textContent = f ? f.name + " (" + (f.size / 1048576).toFixed(1) + " MB)" : projectHint;
+      showError("project", f && f.size > MAX_PROJECT ? "That file is too big. The limit is 30 MB." : "");
+    });
+    // A smaller JPEG copy for the website, made here so the server needs no image tools.
+    // Browsers that cannot read the file (an iPhone HEIC in Chrome, say) just skip it.
+    async function webCopy(file, maxEdge, quality) {
+      if (!file || !/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic)$/i.test(file.name)) return null;
+      try {
+        const bmp = await createImageBitmap(file);
+        const k = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(bmp, 0, 0, c.width, c.height);
+        bmp.close?.();
+        return await new Promise(r => c.toBlob(r, "image/jpeg", quality));
+      } catch { return null; }
+    }
     const MAX_PHOTO = 20 * 1024 * 1024;
 
     const MAX_WORDS = 150;
@@ -1528,6 +1643,8 @@
       const f = photo.files[0];
       if (!f) errs.photo = "Please attach your headshot.";
       else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
+      const pf = project.files[0];
+      if (pf && pf.size > MAX_PROJECT) errs.project = "That file is too big. The limit is 30 MB.";
       return errs;
     }
 
@@ -1544,19 +1661,28 @@
       }
       submitBtn.disabled = true;
       submitBtn.textContent = "[ Sending… ]";
-      status.textContent = "Uploading your photo. This can take a moment.";
+      status.textContent = "Uploading your files. This can take a moment.";
       try {
-        const res = await fetch(form.action, { method: "POST", body: new FormData(form) });
+        const body = new FormData(form);
+        const pf = project.files[0];
+        const [pw, jw] = await Promise.all([
+          webCopy(photo.files[0], 1200, 0.85),
+          pf && pf.type !== "application/pdf" ? webCopy(pf, 2400, 0.88) : null,
+        ]);
+        if (pw) body.append("photo_web", pw, "photo-web.jpg");
+        if (jw) body.append("project_web", jw, "project-web.jpg");
+        const res = await fetch(form.action, { method: "POST", body });
         let data = {};
         try { data = await res.json(); } catch {}
         if (!res.ok || !data.ok) {
           if (data.fields) Object.entries(data.fields).forEach(([k, m]) => showError(k, m));
-          status.textContent = data.error || (res.status === 413 ? "That photo is too big. The limit is 20 MB." : "That did not send. Please try again.");
+          status.textContent = data.error || (res.status === 413 ? "Those files are too big. The limits are 20 MB for the photo and 30 MB for the project." : "That did not send. Please try again.");
           return;
         }
         const first = form.name.value.trim().split(/\s+/)[0];
         document.getElementById("xDoneName").textContent = first ? ", " + first : "";
         document.getElementById("xDoneFile").textContent = data.photoName || "your full name";
+        document.getElementById("xDonePublic").hidden = !data.public;
         form.hidden = true; done.hidden = false; done.focus();
         status.textContent = "";
       } catch {
@@ -1571,6 +1697,7 @@
       form.reset();
       count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
       photoName.textContent = photoHint;
+      projectName.textContent = projectHint;
       done.hidden = true; form.hidden = false;
       form.name.focus();
     });
@@ -1595,10 +1722,75 @@
   });
 
 
+  // ================= GRADUATES =================
+  // Approved profiles come from the submissions service; nothing is baked into the page.
+  const gradGrid = document.getElementById("gradGrid");
+  const gradList = document.getElementById("gradList");
+  const gradProfile = document.getElementById("gradProfile");
+  let graduates = null, gradLoading = null;
+  function loadGraduates() {
+    if (graduates) return Promise.resolve(graduates);
+    if (gradLoading) return gradLoading;
+    gradLoading = fetch("/_s/graduates.json", { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : { graduates: [] })
+      .catch(() => ({ graduates: [] }))
+      .then(d => {
+        graduates = Array.isArray(d.graduates) ? d.graduates : [];
+        gradGrid.replaceChildren(...graduates.map((g, i) => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.className = "gcard"; a.href = "#graduates/" + encodeURIComponent(g.slug);
+          a.style.setProperty("--i", Math.min(i, 30));
+          const img = document.createElement("img");
+          img.src = g.photo; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+          const n = document.createElement("span"); n.className = "gc-name"; n.textContent = g.name;
+          a.append(img, n);
+          if (g.from) { const f = document.createElement("span"); f.className = "gc-from"; f.textContent = g.from; a.append(f); }
+          li.append(a); return li;
+        }));
+        document.getElementById("gradEmpty").hidden = graduates.length > 0;
+        gradLoading = null;
+        return graduates;
+      });
+    return gradLoading;
+  }
+  function showGraduate(slug) {
+    const g = slug && graduates && graduates.find(x => x.slug === slug);
+    gradList.hidden = !!g; gradProfile.hidden = !g;
+    if (!g) {
+      gradGrid.classList.remove("in");
+      requestAnimationFrame(() => requestAnimationFrame(() => gradGrid.classList.add("in")));
+      document.title = baseTitle;
+      return;
+    }
+    document.getElementById("gpPhoto").src = g.photo;
+    document.getElementById("gpPhoto").alt = g.name;
+    document.getElementById("gpName").textContent = g.name;
+    document.getElementById("gpFrom").textContent = g.from || "";
+    const li = document.getElementById("gpLinkedin");
+    li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }
+    document.getElementById("gpOverview").textContent = g.overview;
+    const pdf = document.getElementById("gpPdf"), proj = document.getElementById("gpProject");
+    pdf.hidden = !(g.project && g.project.kind === "pdf");
+    proj.hidden = !(g.project && g.project.kind === "image");
+    if (g.project && g.project.kind === "pdf") { pdf.href = g.project.url; pdf.setAttribute("aria-label", "View project as a PDF (opens in a new tab)"); }
+    if (g.project && g.project.kind === "image") {
+      proj.href = g.project.full || g.project.url;
+      const pi = document.getElementById("gpProjectImg"); pi.src = g.project.url; pi.alt = g.name + ", project";
+    }
+    document.title = g.name + " - STITCH";
+    document.getElementById("graduates").scrollTop = 0;
+    gradProfile.focus({ preventScroll: true });
+  }
+  const baseTitle = document.title;
+  const pageOf = h => h.replace(/^#/, "").split("/")[0];
+  const slugIn = h => decodeURIComponent(h.replace(/^#/, "").split("/").slice(1).join("/"));
+
   // ================= ROUTING =================
   const PAGES = {
     info:     { el: info, color: "#ffffff" },
     links:    { el: document.getElementById("links"), color: "#ffffff" },
+    graduates:{ el: document.getElementById("graduates"), color: "#ffffff" },
     sponsors: { el: document.getElementById("sponsors"), color: "#ffffff" },
   };
   let current = "home";
@@ -1625,12 +1817,14 @@
       if (name === "info") { alignInfo(); startTyping(); }
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
       if (name === "links") { alignInfo(); typeLinks(); }
+      if (name === "graduates") { alignInfo(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
     }
   }
 
   function route(animate) {
-    const name = location.hash.slice(1);
+    const name = pageOf(location.hash);
     const target = PAGES[name] ? name : "home";
+    if (target === current && target === "graduates") { loadGraduates().then(() => showGraduate(slugIn(location.hash))); return; }
     if (target === current || washing) return;
     if (!animate) { setView(target); return; }
     const bgOf = name => name === "home" ? "#000000" : PAGES[name].color;
@@ -1653,7 +1847,7 @@
 
   // ================= START =================
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
-    if (PAGES[location.hash.slice(1)]) { setView(location.hash.slice(1)); nav.classList.add("show"); }
+    if (PAGES[pageOf(location.hash)]) { setView(pageOf(location.hash)); nav.classList.add("show"); }
     else { markNav("home"); playIntro(); }
   });
 })();

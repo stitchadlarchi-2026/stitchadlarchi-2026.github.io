@@ -1,21 +1,25 @@
 /**
- * STITCH exhibition submissions.
+ * STITCH exhibition submissions and the graduate catalogue.
  *
  * Each graduate fills in the form on the Links page: full name, an optional
- * LinkedIn and "where you're from", a short project overview, and the headshot
- * they picked from the portrait gallery. nginx hands the form to this process;
- * this process checks it and writes it to the `submissions-data` volume.
+ * LinkedIn and "where you're from", a short project overview, the headshot
+ * they picked from the portrait gallery, and optionally one project file (an
+ * image or a PDF). They also choose whether their profile may appear on the
+ * site's Graduates page.
+ *
+ * Nothing reaches the Graduates page until the committee approves it on the
+ * review page, and only if the graduate said yes. If someone submits again,
+ * their latest submission is the one that counts; while it waits for
+ * approval, their last approved profile stays up. Saying no takes them off.
  *
  * The committee downloads everything as one zip: `submissions.xlsx` (one row
- * per person) and `photos/<Full Name>.<ext>`, each headshot already renamed
- * after the person who sent it. If someone submits twice, their latest
- * submission wins.
+ * per person), `photos/<Full Name>.<ext>` and `projects/<Full Name> - project.<ext>`.
  *
  * Two servers, two ports, the same split as the usage counters:
- *   FORM_PORT   POST /submit           reached by nginx from the public site
- *   ADMIN_PORT  GET  /export, /status  reached by nginx too, but behind a
- *                                      password (SUBMISSIONS_KEY). With no key
- *                                      set, the admin side answers 404.
+ *   FORM_PORT   POST /submit, GET /graduates.json, GET /media/<file>   public
+ *   ADMIN_PORT  GET /export, /status, /review, /review/media/<file>,
+ *               POST /review/<id>/(approve|hide)    behind SUBMISSIONS_KEY
+ * With no key set, the admin side answers 404.
  *
  * Node builtins only: no package.json, no node_modules.
  */
@@ -31,17 +35,22 @@ const FORM_PORT = Number(process.env.FORM_PORT ?? 8081);
 const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? 9091);
 const DATA = process.env.DATA_DIR ?? '/data';
 const KEY = process.env.SUBMISSIONS_KEY ?? '';
+const APPROVALS = join(DATA, 'approvals.state');
 
 /** Pixieset full-resolution downloads are a few MB; leave room for a phone photo. */
 const MAX_PHOTO = 20 * 1024 * 1024;
-const MAX_BODY = MAX_PHOTO + 64 * 1024;
+/** A project board exported at print quality, or a PDF. */
+const MAX_PROJECT = 30 * 1024 * 1024;
+/** Web copies made in the browser before upload. */
+const MAX_WEB = 6 * 1024 * 1024;
+const MAX_BODY = MAX_PHOTO + MAX_PROJECT + 2 * MAX_WEB + 64 * 1024;
 /** A ceiling on the volume, so a flood cannot fill the box's disk. */
-const MAX_TOTAL = 6 * 1024 * 1024 * 1024;
+const MAX_TOTAL = 12 * 1024 * 1024 * 1024;
 /** Submissions one address may make in an hour. */
 const PER_HOUR = 10;
 
 const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 1500 };
-/** The project overview is a wall label, not an essay. */
+/** The project overview is a short paragraph, not an essay. */
 const MAX_WORDS = 150;
 
 const salt = randomBytes(32);
@@ -73,6 +82,16 @@ function fileSafe(name) {
 
 const nameKey = (name) => name.toLocaleLowerCase('en-AU').replace(/\s+/g, ' ').trim();
 
+/** jane-citizen: the profile's address on the Graduates page. */
+const slugOf = (name) =>
+  name
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'graduate';
+
 function linkedinUrl(v) {
   const s = oneLine(v, LIMITS.linkedin);
   if (!s) return '';
@@ -89,7 +108,7 @@ function linkedinUrl(v) {
 }
 
 /** What the bytes really are, whatever the browser said. */
-function imageType(buf) {
+function fileType(buf) {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
   if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
   if (buf.length >= 12 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'webp';
@@ -97,8 +116,13 @@ function imageType(buf) {
     const brand = buf.toString('latin1', 8, 12);
     if (['heic', 'heix', 'hevc', 'heim', 'heis', 'mif1', 'msf1'].includes(brand)) return 'heic';
   }
+  if (buf.length >= 5 && buf.toString('latin1', 0, 5) === '%PDF-') return 'pdf';
   return null;
 }
+
+const MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', pdf: 'application/pdf' };
+/** What a browser can show without help. HEIC is kept for the committee but never served. */
+const SHOWABLE = new Set(['jpg', 'png', 'webp', 'pdf']);
 
 let CRC_TABLE;
 function crc32(buf, crc = 0) {
@@ -136,8 +160,8 @@ function allowed(req) {
   return true;
 }
 
-function json(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+function json(res, status, body, cache = 'no-store') {
+  res.writeHead(status, { 'content-type': 'application/json', 'cache-control': cache });
   res.end(JSON.stringify(body));
 }
 
@@ -159,12 +183,18 @@ function readBody(req, max) {
   });
 }
 
+async function writeAtomic(path, data) {
+  const tmp = join(DATA, `.${randomBytes(6).toString('hex')}.tmp`);
+  await writeFile(tmp, data);
+  await rename(tmp, path);
+}
+
 // ---------------------------------------------------------------- storage
 
 async function records() {
   const out = [];
   for (const f of await readdir(DATA)) {
-    if (!f.endsWith('.json')) continue;
+    if (!f.endsWith('.json') || f.startsWith('.')) continue;
     try {
       out.push(JSON.parse(await readFile(join(DATA, f), 'utf8')));
     } catch {
@@ -175,15 +205,47 @@ async function records() {
   return out;
 }
 
-/** One row per person: the latest submission under each name. */
-async function latestPerPerson() {
+/** id -> 'approved' | 'hidden'. Missing means waiting for review. */
+async function approvals() {
+  try {
+    return JSON.parse(await readFile(APPROVALS, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Everyone, once: their latest submission, and what the Graduates page shows
+ * for them (their latest approved, public submission, unless their latest says
+ * no, or the committee hid it).
+ */
+async function people() {
+  const marks = await approvals();
   const byName = new Map();
   let all = 0;
   for (const r of await records()) {
     all += 1;
-    byName.set(nameKey(r.name), r);
+    const k = nameKey(r.name);
+    const p = byName.get(k) ?? { history: [] };
+    p.history.push(r);
+    p.latest = r;
+    byName.set(k, p);
   }
-  return { people: [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'en-AU')), all };
+  const list = [...byName.values()].sort((a, b) => a.latest.name.localeCompare(b.latest.name, 'en-AU'));
+  for (const p of list) {
+    p.status = !p.latest.public ? 'private' : marks[p.latest.id] === 'approved' ? 'live' : marks[p.latest.id] === 'hidden' ? 'hidden' : 'pending';
+    p.shown = null;
+    if (p.latest.public && marks[p.latest.id] !== 'hidden') {
+      for (let i = p.history.length - 1; i >= 0; i--) {
+        const r = p.history[i];
+        if (r.public && marks[r.id] === 'approved') {
+          p.shown = r;
+          break;
+        }
+      }
+    }
+  }
+  return { list, all, marks };
 }
 
 async function measure() {
@@ -191,6 +253,8 @@ async function measure() {
   for (const f of await readdir(DATA)) n += (await stat(join(DATA, f))).size;
   totalBytes = n;
 }
+
+const stored = (id, tag, ext, bytes) => ({ file: `${id}${tag}.${ext}`, ext, size: bytes.length, crc: crc32(bytes) });
 
 // ---------------------------------------------------------------- submit
 
@@ -204,7 +268,7 @@ async function submit(req, res) {
     const body = await readBody(req, MAX_BODY);
     form = await new Request('http://form/', { method: 'POST', headers: { 'content-type': type }, body }).formData();
   } catch (e) {
-    if (e.status === 413) return json(res, 413, { error: 'That photo is too big. The limit is 20 MB.' });
+    if (e.status === 413) return json(res, 413, { error: 'Those files are too big together. The limits are 20 MB for the photo and 30 MB for the project.' });
     return json(res, 400, { error: 'The form could not be read. Please try again.' });
   }
 
@@ -215,21 +279,45 @@ async function submit(req, res) {
   const from = oneLine(form.get('from'), LIMITS.from);
   const overview = clean(form.get('overview'), LIMITS.overview);
   const linkedin = linkedinUrl(form.get('linkedin'));
+  const isPublic = ['yes', 'on', 'true'].includes(String(form.get('public') ?? '').toLowerCase());
   const photo = form.get('photo');
+  const project = form.get('project');
+  const isFile = (f) => f && typeof f !== 'string' && f.size > 0;
 
   const problems = {};
   if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
   if (linkedin === null) problems.linkedin = 'That does not look like a LinkedIn link.';
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
   else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
-  if (!photo || typeof photo === 'string' || photo.size === 0) problems.photo = 'Please attach your headshot.';
+  if (!isFile(photo)) problems.photo = 'Please attach your headshot.';
   else if (photo.size > MAX_PHOTO) problems.photo = 'That photo is too big. The limit is 20 MB.';
+  if (isFile(project) && project.size > MAX_PROJECT) problems.project = 'That file is too big. The limit is 30 MB.';
   if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
 
-  const bytes = Buffer.from(await photo.arrayBuffer());
-  const ext = imageType(bytes);
-  if (!ext) return json(res, 422, { error: 'Some fields need another look.', fields: { photo: 'Please upload a JPG, PNG, WebP or HEIC photo.' } });
-  if (totalBytes + bytes.length > MAX_TOTAL) return json(res, 507, { error: 'Submissions are full. Please contact the committee.' });
+  const photoBytes = Buffer.from(await photo.arrayBuffer());
+  const photoExt = fileType(photoBytes);
+  if (!photoExt || photoExt === 'pdf') return json(res, 422, { error: 'Some fields need another look.', fields: { photo: 'Please upload a JPG, PNG, WebP or HEIC photo.' } });
+
+  let projectBytes = null;
+  let projectExt = null;
+  if (isFile(project)) {
+    projectBytes = Buffer.from(await project.arrayBuffer());
+    projectExt = fileType(projectBytes);
+    if (!projectExt) return json(res, 422, { error: 'Some fields need another look.', fields: { project: 'Please upload a JPG, PNG or PDF.' } });
+  }
+
+  /** A browser-made web copy is only kept if it really is a small JPEG. */
+  const webCopy = async (field) => {
+    const f = form.get(field);
+    if (!isFile(f) || f.size > MAX_WEB) return null;
+    const b = Buffer.from(await f.arrayBuffer());
+    return fileType(b) === 'jpg' ? b : null;
+  };
+  const photoWeb = await webCopy('photo_web');
+  const projectWeb = projectExt && projectExt !== 'pdf' ? await webCopy('project_web') : null;
+
+  const incoming = photoBytes.length + (projectBytes?.length ?? 0) + (photoWeb?.length ?? 0) + (projectWeb?.length ?? 0);
+  if (totalBytes + incoming > MAX_TOTAL) return json(res, 507, { error: 'Submissions are full. Please contact the committee.' });
 
   const submittedAt = new Date().toISOString();
   const id = `${submittedAt.replace(/[-:.TZ]/g, '')}-${randomBytes(4).toString('hex')}`;
@@ -240,19 +328,93 @@ async function submit(req, res) {
     linkedin: linkedin ?? '',
     from,
     overview,
-    photo: { file: `${id}.${ext}`, ext, size: bytes.length, crc: crc32(bytes), originalName: oneLine(photo.name, 200) },
+    public: isPublic,
+    photo: { ...stored(id, '', photoExt, photoBytes), originalName: oneLine(photo.name, 200) },
+    photoWeb: photoWeb ? stored(id, '.web', 'jpg', photoWeb) : null,
+    project: projectBytes ? { ...stored(id, '.project', projectExt, projectBytes), originalName: oneLine(project.name, 200) } : null,
+    projectWeb: projectWeb ? stored(id, '.project.web', 'jpg', projectWeb) : null,
   };
 
-  // Photo first, record last, each written beside its name and then renamed into
-  // place: a record on disk always has its photo.
-  await writeFile(join(DATA, `.${id}.${ext}`), bytes);
-  await rename(join(DATA, `.${id}.${ext}`), join(DATA, `${id}.${ext}`));
-  await writeFile(join(DATA, `.${id}.json`), JSON.stringify(record, null, 2));
-  await rename(join(DATA, `.${id}.json`), join(DATA, `${id}.json`));
-  totalBytes += bytes.length;
+  // Files first, record last: a record on disk always has its files.
+  await writeAtomic(join(DATA, record.photo.file), photoBytes);
+  if (photoWeb) await writeAtomic(join(DATA, record.photoWeb.file), photoWeb);
+  if (projectBytes) await writeAtomic(join(DATA, record.project.file), projectBytes);
+  if (projectWeb) await writeAtomic(join(DATA, record.projectWeb.file), projectWeb);
+  await writeAtomic(join(DATA, `${id}.json`), JSON.stringify(record, null, 2));
+  totalBytes += incoming;
 
-  console.log(`submission ${id} (${bytes.length} bytes)`);
-  return json(res, 200, { ok: true, photoName: `${fileSafe(name)}.${ext}` });
+  console.log(`submission ${id} (${incoming} bytes${isPublic ? ', public' : ''})`);
+  return json(res, 200, { ok: true, photoName: `${fileSafe(name)}.${photoExt}`, public: isPublic });
+}
+
+// ---------------------------------------------------------------- catalogue
+
+/** The file a visitor gets: the web copy when there is one and the original is not showable or is large. */
+function servable(original, web) {
+  if (!original) return null;
+  if (web) return web;
+  return SHOWABLE.has(original.ext) ? original : null;
+}
+
+async function catalogue() {
+  const { list } = await people();
+  const used = new Set();
+  const out = [];
+  for (const p of list) {
+    const r = p.shown;
+    if (!r) continue;
+    const photo = servable(r.photo, r.photoWeb);
+    if (!photo) continue;
+    let slug = slugOf(r.name);
+    for (let n = 2; used.has(slug); n++) slug = `${slugOf(r.name)}-${n}`;
+    used.add(slug);
+    const proj = r.project ? (r.project.ext === 'pdf' ? r.project : servable(r.project, r.projectWeb)) : null;
+    out.push({
+      slug,
+      name: r.name,
+      from: r.from,
+      linkedin: r.linkedin,
+      overview: r.overview,
+      photo: `/_s/media/${photo.file}`,
+      project: proj
+        ? {
+            kind: proj.ext === 'pdf' ? 'pdf' : 'image',
+            url: `/_s/media/${proj.file}`,
+            full: r.project.ext !== 'pdf' && SHOWABLE.has(r.project.ext) ? `/_s/media/${r.project.file}` : null,
+          }
+        : null,
+    });
+  }
+  return out;
+}
+
+/** Files a visitor may fetch: only those of profiles on the Graduates page. */
+async function publicFiles() {
+  const { list } = await people();
+  const ok = new Map();
+  for (const p of list) {
+    const r = p.shown;
+    if (!r) continue;
+    for (const f of [r.photoWeb, SHOWABLE.has(r.photo.ext) ? r.photo : null, r.project && SHOWABLE.has(r.project.ext) ? r.project : null, r.projectWeb]) {
+      if (f) ok.set(f.file, { f, name: r.name });
+    }
+  }
+  return ok;
+}
+
+const SAFE_FILE = /^[0-9a-f-]+(?:\.project)?(?:\.web)?\.(?:jpg|png|webp|heic|pdf)$/;
+
+async function sendMedia(res, entry, cache) {
+  const { f, name } = entry;
+  const headers = {
+    'content-type': MIME[f.ext],
+    'content-length': f.size,
+    'cache-control': cache,
+    'x-content-type-options': 'nosniff',
+  };
+  if (f.ext === 'pdf') headers['content-disposition'] = `inline; filename="${fileSafe(name).replace(/[^\x20-\x7e]/g, '_')} - project.pdf"`;
+  res.writeHead(200, headers);
+  createReadStream(join(DATA, f.file)).pipe(res);
 }
 
 // ---------------------------------------------------------------- export
@@ -268,17 +430,13 @@ const xml = (s) =>
 const colName = (i) => String.fromCharCode(65 + i);
 
 function adelaideTime(iso) {
-  return new Intl.DateTimeFormat('en-AU', {
-    timeZone: 'Australia/Adelaide',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(iso));
+  return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Adelaide', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 }
 
 /** A one-sheet workbook. Strings are inline, so no shared-strings part is needed. */
 function workbook(rows) {
-  const head = ['Full name', 'LinkedIn', 'Where from', 'Project overview', 'Photo file', 'Submitted'];
-  const widths = [28, 40, 24, 80, 32, 20];
+  const head = ['Full name', 'LinkedIn', 'Where from', 'Project overview', 'Photo file', 'Project file', 'On website?', 'Website status', 'Submitted'];
+  const widths = [28, 40, 22, 80, 32, 40, 12, 16, 20];
   const all = [head, ...rows];
   const sheetRows = all
     .map((r, ri) => {
@@ -306,8 +464,8 @@ function workbook(rows) {
 
 /**
  * A zip written straight to the response. Small parts are deflated in memory;
- * photos are streamed from disk as stored entries, using the size and CRC kept
- * at submit time, so memory stays flat however many people have submitted.
+ * photos and projects are streamed from disk as stored entries, using the size
+ * and CRC kept at submit time, so memory stays flat however many have submitted.
  */
 class ZipStream {
   constructor(out) {
@@ -373,18 +531,29 @@ class ZipStream {
   }
 }
 
+const STATUS_WORD = { live: 'Live', pending: 'Waiting for review', hidden: 'Hidden', private: 'Not on website' };
+
 async function exportZip(res) {
-  const { people } = await latestPerPerson();
+  const { list } = await people();
   const used = new Set();
+  const unique = (base, ext) => {
+    let b = base;
+    for (let n = 2; used.has(`${b}.${ext}`.toLowerCase()); n++) b = `${base} ${n}`;
+    used.add(`${b}.${ext}`.toLowerCase());
+    return `${b}.${ext}`;
+  };
   const rows = [];
-  const photos = [];
-  for (const p of people) {
-    let base = fileSafe(p.name);
-    for (let n = 2; used.has(`${base}.${p.photo.ext}`.toLowerCase()); n++) base = `${fileSafe(p.name)} ${n}`;
-    const file = `${base}.${p.photo.ext}`;
-    used.add(file.toLowerCase());
-    photos.push({ file, p });
-    rows.push([p.name, p.linkedin, p.from, p.overview, file, adelaideTime(p.submittedAt)]);
+  const files = [];
+  for (const p of list) {
+    const r = p.latest;
+    const photoFile = unique(fileSafe(r.name), r.photo.ext);
+    files.push([`photos/${photoFile}`, r.photo]);
+    let projectFile = '';
+    if (r.project) {
+      projectFile = unique(`${fileSafe(r.name)} - project`, r.project.ext);
+      files.push([`projects/${projectFile}`, r.project]);
+    }
+    rows.push([r.name, r.linkedin, r.from, r.overview, photoFile, projectFile, r.public ? 'Yes' : 'No', STATUS_WORD[p.status], adelaideTime(r.submittedAt)]);
   }
   const stamp = new Date().toISOString().slice(0, 10);
   res.writeHead(200, {
@@ -392,7 +561,6 @@ async function exportZip(res) {
     'content-disposition': `attachment; filename="stitch-submissions-${stamp}.zip"`,
     'cache-control': 'no-store',
   });
-  const zip = new ZipStream(res);
   // The workbook is itself a zip, kept whole inside the outer one.
   const inner = await new Promise((resolve) => {
     const parts = [];
@@ -403,11 +571,88 @@ async function exportZip(res) {
       await z.finish();
     })();
   });
+  const zip = new ZipStream(res);
   await zip.addBuffer('submissions.xlsx', inner);
-  for (const { file, p } of photos) {
-    await zip.addFile(`photos/${file}`, join(DATA, p.photo.file), p.photo.size, p.photo.crc);
-  }
+  for (const [name, f] of files) await zip.addFile(name, join(DATA, f.file), f.size, f.crc);
   await zip.finish();
+}
+
+// ---------------------------------------------------------------- review page
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+async function reviewPage(res) {
+  const { list, all } = await people();
+  const order = { pending: 0, live: 1, hidden: 2, private: 3 };
+  const sorted = [...list].sort((a, b) => order[a.status] - order[b.status] || a.latest.name.localeCompare(b.latest.name, 'en-AU'));
+  const counts = { pending: 0, live: 0, hidden: 0, private: 0 };
+  for (const p of list) counts[p.status] += 1;
+  const media = (f) => (f ? `/_s/review/media/${f.file}` : '');
+  const cards = sorted
+    .map((p) => {
+      const r = p.latest;
+      const thumb = media(r.photoWeb ?? (SHOWABLE.has(r.photo.ext) ? r.photo : null));
+      const proj = r.project
+        ? `<a href="${media(r.project.ext === 'pdf' || !r.projectWeb ? r.project : r.projectWeb)}" target="_blank" rel="noopener">View project (${r.project.ext.toUpperCase()})</a>`
+        : '<span class="muted">No project file</span>';
+      const note = p.status === 'pending' && p.shown && p.shown.id !== r.id ? '<p class="note">Updated. Their earlier approved profile stays up until you approve this one.</p>' : '';
+      const actions =
+        p.status === 'private'
+          ? '<p class="muted">They chose not to appear on the website.</p>'
+          : `<form method="post" action="/_s/review/${esc(r.id)}/approve"><button ${p.status === 'live' ? 'disabled' : ''}>Approve</button></form>
+             <form method="post" action="/_s/review/${esc(r.id)}/hide"><button class="ghost" ${p.status === 'hidden' ? 'disabled' : ''}>Hide</button></form>`;
+      return `<article class="card ${p.status}">
+        ${thumb ? `<img src="${thumb}" alt="" loading="lazy">` : '<div class="noimg">HEIC photo</div>'}
+        <div class="body">
+          <p class="status">${STATUS_WORD[p.status]}</p>
+          <h2>${esc(r.name)}</h2>
+          <p class="meta">${esc(r.from || 'No place given')}${r.linkedin ? ` · <a href="${esc(r.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}</p>
+          <p class="ov">${esc(r.overview)}</p>
+          <p>${proj}</p>
+          ${note}
+          <div class="actions">${actions}</div>
+        </div>
+      </article>`;
+    })
+    .join('\n');
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STITCH - Review graduates</title>
+<style>
+:root{--ink:#111;--red:#C82B29;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:14px/1.5 var(--mono)}
+header{padding:28px 24px 8px}h1{margin:0 0 6px;font-size:15px;letter-spacing:.08em;text-transform:uppercase}
+.sum{margin:0;color:#666}.sum b{color:var(--ink);font-weight:500}.links{margin:8px 0 0}.links a{color:var(--red)}
+main{padding:16px 24px 60px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.card{border:1px solid #ddd;display:grid;grid-template-columns:110px 1fr;gap:14px;padding:14px}
+.card.pending{border-color:var(--red)}.card.private,.card.hidden{opacity:.6}
+.card img,.noimg{width:110px;aspect-ratio:4/5;object-fit:cover;background:#f2f2f2;display:grid;place-items:center;font-size:11px;color:#888}
+h2{margin:0;font-size:15px;font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.status{margin:0 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
+.live .status{color:#2a7a2a}.meta{margin:4px 0;color:#666}.ov{margin:8px 0;white-space:pre-wrap}
+a{color:var(--ink)}.muted{color:#888}.note{font-size:12px;color:var(--red)}
+.actions{display:flex;gap:8px;margin-top:10px}.actions form{margin:0}
+button{font:inherit;text-transform:uppercase;letter-spacing:.03em;border:0;border-radius:0;padding:.3em .7em;background:var(--red);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);outline:1px solid var(--ink)}button[disabled]{opacity:.35;cursor:default}
+.empty{color:#888}
+</style></head><body>
+<header><h1>STITCH graduates: review</h1>
+<p class="sum"><b>${counts.pending}</b> waiting · <b>${counts.live}</b> live · <b>${counts.hidden}</b> hidden · <b>${counts.private}</b> not on website · ${all} submissions in all</p>
+<p class="links"><a href="/_s/export">Download everything (zip)</a> · <a href="/#graduates" target="_blank" rel="noopener">Open the Graduates page</a></p></header>
+<main>${cards || '<p class="empty">No submissions yet.</p>'}</main>
+</body></html>`;
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY' });
+  res.end(html);
+}
+
+async function mark(req, res, id, action) {
+  const { list } = await people();
+  const known = list.some((p) => p.history.some((r) => r.id === id));
+  if (!known) return json(res, 404, { error: 'unknown' });
+  const marks = await approvals();
+  marks[id] = action === 'approve' ? 'approved' : 'hidden';
+  await writeAtomic(APPROVALS, JSON.stringify(marks, null, 2));
+  console.log(`review ${id}: ${marks[id]}`);
+  res.writeHead(303, { location: '/_s/review', 'cache-control': 'no-store' }).end();
 }
 
 function authorised(req) {
@@ -422,14 +667,25 @@ function authorised(req) {
 
 // ---------------------------------------------------------------- servers
 
+const fail = (res, what) => (e) => {
+  console.error(`${what} failed`, e);
+  if (!res.headersSent) json(res, 500, { error: 'Something went wrong. Please try again.' });
+  else res.destroy();
+};
+
 const formServer = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
-  if (req.method === 'POST' && path === '/submit') {
-    submit(req, res).catch((e) => {
-      console.error('submit failed', e);
-      if (!res.headersSent) json(res, 500, { error: 'Something went wrong. Please try again.' });
-    });
-    return;
+  if (req.method === 'POST' && path === '/submit') return void submit(req, res).catch(fail(res, 'submit'));
+  if (req.method === 'GET' && path === '/graduates.json') {
+    return void catalogue()
+      .then((g) => json(res, 200, { graduates: g }, 'public, max-age=60'))
+      .catch(fail(res, 'catalogue'));
+  }
+  const m = req.method === 'GET' && /^\/media\/([^/]+)$/.exec(path);
+  if (m && SAFE_FILE.test(m[1])) {
+    return void publicFiles()
+      .then((ok) => (ok.has(m[1]) ? sendMedia(res, ok.get(m[1]), 'public, max-age=86400') : res.writeHead(404).end()))
+      .catch(fail(res, 'media'));
   }
   res.writeHead(404).end();
 });
@@ -437,32 +693,47 @@ const formServer = createServer((req, res) => {
 const adminServer = createServer((req, res) => {
   const path = (req.url ?? '').split('?')[0];
   if (req.method === 'GET' && path === '/health') return json(res, 200, { ok: true });
-  if (!KEY || req.method !== 'GET' || !['/export', '/status'].includes(path)) {
-    res.writeHead(404).end();
-    return;
-  }
+  if (!KEY) return void res.writeHead(404).end();
   if (!authorised(req)) {
     res.writeHead(401, { 'www-authenticate': 'Basic realm="STITCH submissions", charset="UTF-8"', 'cache-control': 'no-store' }).end();
     return;
   }
-  const run =
-    path === '/export'
-      ? exportZip(res)
-      : latestPerPerson().then(({ people, all }) =>
-          json(res, 200, { people: people.length, submissions: all, latest: people.at(-1)?.submittedAt ?? null, names: people.map((p) => p.name) }),
-        );
-  run.catch((e) => {
-    console.error(`${path} failed`, e);
-    if (!res.headersSent) json(res, 500, { error: 'failed' });
-    else res.destroy();
-  });
+  if (req.method === 'GET' && path === '/export') return void exportZip(res).catch(fail(res, 'export'));
+  if (req.method === 'GET' && path === '/status') {
+    return void people()
+      .then(({ list, all }) =>
+        json(res, 200, {
+          people: list.length,
+          submissions: all,
+          live: list.filter((p) => p.shown).length,
+          waiting: list.filter((p) => p.status === 'pending').length,
+          names: list.map((p) => p.latest.name),
+        }),
+      )
+      .catch(fail(res, 'status'));
+  }
+  if (req.method === 'GET' && path === '/review') return void reviewPage(res).catch(fail(res, 'review'));
+  const media = req.method === 'GET' && /^\/review\/media\/([^/]+)$/.exec(path);
+  if (media && SAFE_FILE.test(media[1])) {
+    return void records()
+      .then((all) => {
+        for (const r of all)
+          for (const f of [r.photo, r.photoWeb, r.project, r.projectWeb])
+            if (f && f.file === media[1] && SHOWABLE.has(f.ext)) return sendMedia(res, { f, name: r.name }, 'private, no-store');
+        res.writeHead(404).end();
+      })
+      .catch(fail(res, 'review media'));
+  }
+  const act = req.method === 'POST' && /^\/review\/([0-9a-f-]+)\/(approve|hide)$/.exec(path);
+  if (act) return void mark(req, res, act[1], act[2]).catch(fail(res, 'review action'));
+  res.writeHead(404).end();
 });
 
 await mkdir(DATA, { recursive: true });
 await measure();
 formServer.requestTimeout = 5 * 60 * 1000;
-formServer.listen(FORM_PORT, '0.0.0.0', () => console.log(`form on :${FORM_PORT}/submit`));
-adminServer.listen(ADMIN_PORT, '0.0.0.0', () => console.log(`admin on :${ADMIN_PORT}${KEY ? '' : ' (no SUBMISSIONS_KEY: export off)'}`));
+formServer.listen(FORM_PORT, '0.0.0.0', () => console.log(`form on :${FORM_PORT}`));
+adminServer.listen(ADMIN_PORT, '0.0.0.0', () => console.log(`admin on :${ADMIN_PORT}${KEY ? '' : ' (no SUBMISSIONS_KEY: admin off)'}`));
 
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
