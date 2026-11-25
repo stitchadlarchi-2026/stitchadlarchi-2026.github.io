@@ -219,7 +219,7 @@
   .grads .gcard:hover .gc-name { color: var(--red); }
   .grads .gcard:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
   .grads .gc-name { line-height: 1.3; }
-  .grads .gc-from { color: #999; line-height: 1.3; }
+  .grads .gc-from { color: #999; line-height: 1.3; text-transform: none; letter-spacing: 0; }
   .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
   .grads .ggrid.in .gcard { opacity: 1; transform: none; }
   @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -234,6 +234,8 @@
   .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
   .grads .gfrom { margin: -.4em 0 0; color: #888; }
   .grads .gfrom:empty { display: none; }
+  .grads .gdeg { color: var(--ink); }
+  .grads .gdeg + .gfrom { margin-top: -.7em; }
   .grads .gov { margin: .4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.6; white-space: pre-line; }
   .grads .gproj { display: block; margin-top: clamp(28px, 5vh, 56px); }
   .grads .gproj img { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; object-position: left top; background: #f7f7f7; }
@@ -266,6 +268,8 @@
   .lnks .xstep { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; max-width: 34em; }
   .lnks .xstep:not(:first-child) { margin-top: 1.4em; }
   .lnks .xnum { color: var(--red); margin-right: .6em; }
+  .lnks .xstep.xfor { color: #777; }
+  .lnks .xstep.xfor + .xstep { margin-top: .2em; }
   .lnks .xform { display: grid; gap: 1.6em; width: 100%; margin-top: .4em; }
   .lnks .xfield { display: grid; gap: .45em; }
   .lnks .xfield label, .lnks .xlabel { font-size: .85em; letter-spacing: .08em; }
@@ -276,6 +280,16 @@
     background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
     padding: .45em 0; width: 100%; outline: none;
   }
+  .lnks .xform select {
+    font: inherit; text-transform: none; letter-spacing: 0; color: var(--ink);
+    background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
+    padding: .45em 1.4em .45em 0; width: 100%; outline: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - .7em) 55%, calc(100% - .35em) 55%; background-size: .35em .35em; background-repeat: no-repeat;
+  }
+  .lnks .xform select:focus { border-color: var(--red); box-shadow: 0 1px 0 var(--red); }
+  .lnks .xform select:invalid { color: #aaa; }
+  .lnks .xform select option { color: var(--ink); }
   .lnks .xform textarea { border: 1px solid var(--ink); padding: .6em .7em; resize: vertical; min-height: 7.5em; line-height: 1.5; }
   .lnks .xform input:focus, .lnks .xform textarea:focus { border-color: var(--red); box-shadow: 0 1px 0 var(--red); }
   .lnks .xform textarea:focus { box-shadow: 0 0 0 1px var(--red); }
@@ -486,6 +500,7 @@
       <div class="xdrop-body" id="xhbBody" inert>
         <div>
           <div class="xform-wrap">
+            <p class="xstep xfor">For Master’s students graduating in 2026.</p>
             <p class="xstep"><span class="xnum">01</span> Choose your headshot from the portrait gallery and download the one you like.</p>
             <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
               <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
@@ -498,6 +513,20 @@
                 <input id="xName" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="xNameHint xNameErr">
                 <p class="xhint" id="xNameHint">First and last name, as it should appear at the exhibition.</p>
                 <p class="xerr" id="xNameErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <label for="xDegree">Degree you’re completing <span class="req" aria-hidden="true">*</span></label>
+                <select id="xDegree" name="degree" required aria-describedby="xDegreeHint xDegreeErr">
+                  <option value="" selected disabled>Choose your degree</option>
+                  <option>Master of Architecture</option>
+                  <option>Master of Landscape Architecture</option>
+                  <option>Master of Architecture, Master of Landscape Architecture</option>
+                  <option>Master of Design (Interior Architecture)</option>
+                  <option value="other">Other</option>
+                </select>
+                <input id="xDegreeOther" name="degree_other" type="text" maxlength="120" placeholder="Write your degree" hidden aria-label="Your degree">
+                <p class="xhint" id="xDegreeHint">Shown under your name in the Student Directory.</p>
+                <p class="xerr" id="xDegreeErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
                 <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
@@ -532,7 +561,7 @@
               <div class="xfield xcheck">
                 <input id="xPublic" name="public" type="checkbox" value="yes" aria-describedby="xPublicHint">
                 <label for="xPublic">Show my profile and project on the STITCH website</label>
-                <p class="xhint" id="xPublicHint">Your photo, name, where you’re from, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
+                <p class="xhint" id="xPublicHint">Your photo, name, degree, where you’re from, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
@@ -569,6 +598,7 @@
         <img class="gphoto" id="gpPhoto" alt="">
         <div class="ginfo">
           <h2 class="gname" id="gpName"></h2>
+          <p class="gfrom gdeg" id="gpDegree"></p>
           <p class="gfrom" id="gpFrom"></p>
           <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
           <p class="gov" id="gpOverview"></p>
@@ -1588,7 +1618,14 @@
     const photoHint = photoName.textContent;
     const overview = document.getElementById("xOverview");
     const count = document.getElementById("xCount");
-    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
+    const degree = document.getElementById("xDegree");
+    const degreeOther = document.getElementById("xDegreeOther");
+    degree.addEventListener("change", () => {
+      showError("degree", "");
+      degreeOther.hidden = degree.value !== "other";
+      if (!degreeOther.hidden) degreeOther.focus();
+    });
+    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
     const project = document.getElementById("xProject");
     const projectName = document.getElementById("xProjectName");
     const projectHint = projectName.textContent;
@@ -1639,6 +1676,8 @@
       const errs = {};
       const name = form.name.value.trim().replace(/\s+/g, " ");
       if (name.split(" ").filter(Boolean).length < 2) errs.name = "Please give your full name, first and last.";
+      if (!degree.value) errs.degree = "Please choose your degree.";
+      else if (degree.value === "other" && !degreeOther.value.trim()) errs.degree = "Please write your degree.";
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
@@ -1701,6 +1740,7 @@
       count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
       photoName.textContent = photoHint;
       projectName.textContent = projectHint;
+      degreeOther.hidden = true;
       done.hidden = true; form.hidden = false;
       form.name.focus();
     });
@@ -1748,7 +1788,7 @@
           img.src = g.photo; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
           const n = document.createElement("span"); n.className = "gc-name"; n.textContent = g.name;
           a.append(img, n);
-          if (g.from) { const f = document.createElement("span"); f.className = "gc-from"; f.textContent = g.from; a.append(f); }
+          if (g.degree) { const f = document.createElement("span"); f.className = "gc-from"; f.textContent = g.degree; a.append(f); }
           li.append(a); return li;
         }));
         document.getElementById("gradEmpty").hidden = graduates.length > 0;
@@ -1769,6 +1809,7 @@
     document.getElementById("gpPhoto").src = g.photo;
     document.getElementById("gpPhoto").alt = g.name;
     document.getElementById("gpName").textContent = g.name;
+    document.getElementById("gpDegree").textContent = g.degree || "";
     document.getElementById("gpFrom").textContent = g.from || "";
     const li = document.getElementById("gpLinkedin");
     li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }

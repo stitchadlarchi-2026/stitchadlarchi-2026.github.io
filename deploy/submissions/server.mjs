@@ -1,7 +1,7 @@
 /**
  * STITCH exhibition submissions and the graduate catalogue.
  *
- * Each graduate fills in the form on the Links page: full name, an optional
+ * Each graduate fills in the form on the Links page: full name, degree, an optional
  * LinkedIn and "where you're from", a short project overview, the headshot
  * they picked from the portrait gallery, and optionally one project file (an
  * image or a PDF). They also choose whether their profile may appear on the
@@ -49,7 +49,7 @@ const MAX_TOTAL = 12 * 1024 * 1024 * 1024;
 /** Submissions one address may make in an hour. */
 const PER_HOUR = 10;
 
-const LIMITS = { name: 120, from: 120, linkedin: 300, overview: 1500 };
+const LIMITS = { name: 120, degree: 120, from: 120, linkedin: 300, overview: 1500 };
 /** The project overview is a short paragraph, not an essay. */
 const MAX_WORDS = 150;
 
@@ -277,6 +277,8 @@ async function submit(req, res) {
 
   const name = oneLine(form.get('name'), LIMITS.name);
   const from = oneLine(form.get('from'), LIMITS.from);
+  const picked = oneLine(form.get('degree'), LIMITS.degree);
+  const degree = picked === 'other' ? oneLine(form.get('degree_other'), LIMITS.degree) : picked;
   const overview = clean(form.get('overview'), LIMITS.overview);
   const linkedin = linkedinUrl(form.get('linkedin'));
   const isPublic = ['yes', 'on', 'true'].includes(String(form.get('public') ?? '').toLowerCase());
@@ -286,6 +288,7 @@ async function submit(req, res) {
 
   const problems = {};
   if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
+  if (!degree) problems.degree = picked === 'other' ? 'Please write your degree.' : 'Please choose your degree.';
   if (linkedin === null) problems.linkedin = 'That does not look like a LinkedIn link.';
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
   else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
@@ -325,6 +328,7 @@ async function submit(req, res) {
     id,
     submittedAt,
     name,
+    degree,
     linkedin: linkedin ?? '',
     from,
     overview,
@@ -372,6 +376,7 @@ async function catalogue() {
     out.push({
       slug,
       name: r.name,
+      degree: r.degree ?? '',
       from: r.from,
       linkedin: r.linkedin,
       overview: r.overview,
@@ -435,15 +440,15 @@ function adelaideTime(iso) {
 
 /** A one-sheet workbook. Strings are inline, so no shared-strings part is needed. */
 function workbook(rows) {
-  const head = ['Full name', 'LinkedIn', 'Where from', 'Project overview', 'Photo file', 'Project file', 'On website?', 'Website status', 'Submitted'];
-  const widths = [28, 40, 22, 80, 32, 40, 12, 16, 20];
+  const head = ['Full name', 'Degree', 'LinkedIn', 'Where from', 'Project overview', 'Photo file', 'Project file', 'On website?', 'Website status', 'Submitted'];
+  const widths = [28, 34, 40, 22, 80, 32, 40, 12, 16, 20];
   const all = [head, ...rows];
   const sheetRows = all
     .map((r, ri) => {
       const cells = r
         .map((v, ci) => {
           const ref = `${colName(ci)}${ri + 1}`;
-          const style = ri === 0 ? ' s="1"' : ci === 3 ? ' s="2"' : '';
+          const style = ri === 0 ? ' s="1"' : ci === 4 ? ' s="2"' : '';
           return `<c r="${ref}" t="inlineStr"${style}><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
         })
         .join('');
@@ -553,7 +558,7 @@ async function exportZip(res) {
       projectFile = unique(`${fileSafe(r.name)} - project`, r.project.ext);
       files.push([`projects/${projectFile}`, r.project]);
     }
-    rows.push([r.name, r.linkedin, r.from, r.overview, photoFile, projectFile, r.public ? 'Yes' : 'No', STATUS_WORD[p.status], adelaideTime(r.submittedAt)]);
+    rows.push([r.name, r.degree ?? '', r.linkedin, r.from, r.overview, photoFile, projectFile, r.public ? 'Yes' : 'No', STATUS_WORD[p.status], adelaideTime(r.submittedAt)]);
   }
   const stamp = new Date().toISOString().slice(0, 10);
   res.writeHead(200, {
@@ -606,6 +611,7 @@ async function reviewPage(res) {
         <div class="body">
           <p class="status">${STATUS_WORD[p.status]}</p>
           <h2>${esc(r.name)}</h2>
+          <p class="meta">${esc(r.degree || 'No degree given')}</p>
           <p class="meta">${esc(r.from || 'No place given')}${r.linkedin ? ` · <a href="${esc(r.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}</p>
           <p class="ov">${esc(r.overview)}</p>
           <p>${proj}</p>
