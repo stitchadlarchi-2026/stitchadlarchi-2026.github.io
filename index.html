@@ -1597,7 +1597,7 @@
   }
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
   const typeDirectory = makeTyper([document.getElementById("gradHead")]);
-  const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
+  const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")]);
 
   // Links: Exhibition drop-down and the submission form
   exhibition: {
