@@ -439,7 +439,7 @@
 
     <div class="xhb">
       <button type="button" class="ilink xdrop" aria-expanded="false" aria-controls="xhbBody">
-        <span class="sq" aria-hidden="true"></span><span class="lt">EXHIBITION</span><span class="plus" aria-hidden="true">+</span>
+        <span class="sq" aria-hidden="true"></span><span class="lt">STUDENT EXHIBITION FORM</span><span class="plus" aria-hidden="true">+</span>
       </button>
       <div class="xdrop-body" id="xhbBody" inert>
         <div>
@@ -466,6 +466,11 @@
                 <label for="xFrom">Where you’re from <span class="opt">(optional)</span></label>
                 <input id="xFrom" name="from" type="text" maxlength="120" aria-describedby="xFromHint">
                 <p class="xhint" id="xFromHint">A place, such as a town, city or country. Not your ethnicity.</p>
+              </div>
+              <div class="xfield">
+                <label for="xTitle">Project title <span class="req" aria-hidden="true">*</span></label>
+                <input id="xTitle" name="title" type="text" required maxlength="150" aria-describedby="xTitleErr">
+                <p class="xerr" id="xTitleErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
                 <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
@@ -500,7 +505,7 @@
               </div>
               <div class="xfield xnotice" id="xNotice">
                 <p class="xlabel">How we use your details</p>
-                <p class="xhint">The STITCH committee collects your name, headshot, project overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
+                <p class="xhint">The STITCH committee collects your name, headshot, project title and overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
                 <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>.</p>
                 <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
                 <label class="xcheck" for="xConsent">
@@ -1516,7 +1521,7 @@
     };
   }
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
-  const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
+  const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")]);
 
   // Links: Exhibition drop-down and the submission form
   exhibition: {
@@ -1539,7 +1544,7 @@
     const progress = document.getElementById("xProgress");
     const barFill = document.getElementById("xBarFill");
     const progressText = document.getElementById("xProgressText");
-    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
+    const fields = { name: "xName", linkedin: "xLinkedin", title: "xTitle", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
 
     // The three uploads. Sizes in MB, per type; the server checks them again,
     // and checks each file's real first bytes once it has arrived.
@@ -1595,6 +1600,7 @@
       if (name.split(" ").filter(Boolean).length < 2) errs.name = "Please give your full name, first and last.";
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
+      if (!document.getElementById("xTitle").value.trim()) errs.title = "Please give your project a title.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
       else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
       for (const kind of Object.keys(FILES)) {
@@ -1708,7 +1714,7 @@
       progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
       try {
         const started = await postJson("/_s/start", {
-          name: form.name.value, linkedin: form.linkedin.value, from: form.from.value, overview: overview.value,
+          name: form.name.value, linkedin: form.linkedin.value, from: form.from.value, title: document.getElementById("xTitle").value, overview: overview.value,
           consent: form.consent.checked, website: form.website.value, turnstile: robot.value,
           files: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, { size: f.size, type: f.type || "", name: f.name }])),
         }, 3);

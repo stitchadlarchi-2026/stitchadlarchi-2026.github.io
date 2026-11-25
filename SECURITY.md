@@ -16,7 +16,7 @@ STITCH committee, so the site holds third-party personal information and the who
 `stitch-exhibition_submissions-files`, on NCH Consultancy's server in Australia. Every file
 is also in the R2 bucket `stitch-uploads` on NCH's Cloudflare account (location hint:
 Oceania) until the deletion date. Only `deploy/submissions/server.mjs` reads or writes any of
-it. It binds named fields only: name, LinkedIn, place of origin, overview, the three files,
+it. It binds named fields only: name, LinkedIn, place of origin, project title, overview, the three files,
 and the text of the consent the person ticked. The browsers' file names are not kept.
 
 **Since 2026-11-26 the files go straight to R2.** A master's booklet runs to hundreds of
