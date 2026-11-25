@@ -81,6 +81,44 @@ services:
       start_period: 5s
       retries: 3
 
+  # Exhibition submissions: the form on the Links page posts here through
+  # nginx, and the committee downloads everything as one zip (an Excel sheet
+  # plus each headshot renamed after its person) from /_s/export, behind
+  # SUBMISSIONS_KEY. Unlike `usage`, this one keeps data: it lives on the
+  # `submissions-data` volume, so a redeploy or reboot keeps every submission.
+  # nginx does not depend on it: if it is down, the page is unaffected and the
+  # form says it could not send. See deploy/submissions/.
+  submissions:
+    build:
+      context: deploy/submissions
+    restart: unless-stopped
+    environment:
+      SUBMISSIONS_KEY: ${SUBMISSIONS_KEY:-}
+    volumes:
+      - submissions-data:/data
+    mem_limit: 192m
+    memswap_limit: 192m
+    pids_limit: 64
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:9091/health >/dev/null 2>&1 || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
   cloudflared:
     image: cloudflare/cloudflared:2026.8.2
     restart: unless-stopped
@@ -101,3 +139,8 @@ services:
       options:
         max-size: '10m'
         max-file: '3'
+
+volumes:
+  # Every exhibition submission and headshot. Back this up with the box; it is
+  # the only thing in this stack that cannot be rebuilt from git.
+  submissions-data:

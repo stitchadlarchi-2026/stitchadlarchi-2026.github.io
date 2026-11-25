@@ -200,6 +200,67 @@
   }
   @media (max-width: 700px) { .lnks { padding-inline: var(--x1, 16px); } }
 
+  /* ---------- links page: Exhibition drop-down with the submission form ---------- */
+  .lnks .xhb { display: grid; justify-items: start; width: 100%; }
+  .lnks .xdrop {
+    appearance: none; background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
+  }
+  .lnks .xdrop:hover .lt { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .lnks .xdrop .plus { display: inline-block; line-height: 1; transition: transform .3s ease; text-decoration: none !important; color: var(--ink); }
+  .lnks .xdrop[aria-expanded="true"] .plus { transform: rotate(45deg); }
+  .lnks .xdrop-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s ease; width: 100%; }
+  .lnks .xdrop-body > div { overflow: hidden; min-height: 0; }
+  .lnks .xdrop-body.open { grid-template-rows: 1fr; }
+  .lnks .xform-wrap {
+    padding: clamp(20px, 3.5vh, 36px) 0 4px calc(.8em + .75em);   /* lines up with the link text, past the red square */
+    max-width: 40em; display: grid; gap: 1.1em; justify-items: start;
+    opacity: 0; transform: translateY(-10px); transition: opacity .35s ease .15s, transform .35s ease .15s;
+  }
+  .lnks .xdrop-body.open .xform-wrap { opacity: 1; transform: none; }
+  .lnks .xstep { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; max-width: 34em; }
+  .lnks .xstep:not(:first-child) { margin-top: 1.4em; }
+  .lnks .xnum { color: var(--red); margin-right: .6em; }
+  .lnks .xform { display: grid; gap: 1.6em; width: 100%; margin-top: .4em; }
+  .lnks .xfield { display: grid; gap: .45em; }
+  .lnks .xfield label, .lnks .xlabel { font-size: .85em; letter-spacing: .08em; }
+  .lnks .req { color: var(--red); }
+  .lnks .opt { color: #888; }
+  .lnks .xform input[type="text"], .lnks .xform input[type="url"], .lnks .xform textarea {
+    font: inherit; text-transform: none; letter-spacing: 0; color: var(--ink);
+    background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
+    padding: .45em 0; width: 100%; outline: none;
+  }
+  .lnks .xform textarea { border: 1px solid var(--ink); padding: .6em .7em; resize: vertical; min-height: 7.5em; line-height: 1.5; }
+  .lnks .xform input:focus, .lnks .xform textarea:focus { border-color: var(--red); box-shadow: 0 1px 0 var(--red); }
+  .lnks .xform textarea:focus { box-shadow: 0 0 0 1px var(--red); }
+  .lnks .xform [aria-invalid="true"] { border-color: var(--red); }
+  .lnks .xform input::placeholder { color: #aaa; }
+  .lnks .xhint { margin: 0; font-size: .8em; color: #777; text-transform: none; letter-spacing: 0; line-height: 1.45; }
+  .lnks .xerr { margin: 0; font-size: .8em; color: var(--red); text-transform: none; letter-spacing: 0; }
+  .lnks .xerr:empty { display: none; }
+  .lnks .xfile, .lnks .xsubmit, .lnks .xagain {
+    appearance: none; border: 0; border-radius: 0; margin: 0; cursor: pointer; justify-self: start;
+    font: inherit; letter-spacing: inherit; text-transform: uppercase; white-space: pre;
+    padding: .22em .45em; margin-left: -.45em;
+  }
+  .lnks .xfile { background: transparent; color: var(--ink); }
+  .lnks .xfile:hover { color: var(--red); }
+  #xPhoto:focus-visible + .xfile { outline: 1px solid var(--red); outline-offset: 2px; }
+  .lnks .xsubmit { background: var(--red); color: var(--white); margin-top: .4em; }
+  .lnks .xsubmit:hover { background: var(--ink); }
+  .lnks .xsubmit[disabled] { opacity: .55; cursor: progress; }
+  .lnks .xagain { background: transparent; color: var(--ink); }
+  .lnks .xagain:hover { color: var(--red); }
+  .lnks .xfile:focus-visible, .lnks .xsubmit:focus-visible, .lnks .xagain:focus-visible, .lnks .xdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .lnks .xstatus { margin: 0; font-size: .85em; text-transform: none; letter-spacing: 0; color: var(--red); min-height: 1.2em; }
+  .lnks .xtrap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
+  .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
+  .lnks .xdone .xdone-title { text-transform: uppercase; letter-spacing: .03em; color: var(--red); }
+  .lnks .xdone #xDoneFile { white-space: nowrap; }
+  @media (max-width: 700px) { .lnks .xform-wrap { padding-left: 0; } }
+
   /* ---------- sponsors page: one list, split by tier, logos in left-aligned rows ---------- */
   .spons {
     color: var(--ink); font-family: var(--mono); text-transform: uppercase;
@@ -361,6 +422,68 @@
     <a class="ilink" href="https://noahtyley.pixieset.com/stitchannualgala/" target="_blank" rel="noopener" aria-label="Gala photos (opens in a new tab)">
       <span class="sq" aria-hidden="true"></span><span class="lt">GALA PHOTOS</span>
     </a>
+
+    <div class="xhb">
+      <button type="button" class="ilink xdrop" aria-expanded="false" aria-controls="xhbBody">
+        <span class="sq" aria-hidden="true"></span><span class="lt">EXHIBITION</span><span class="plus" aria-hidden="true">+</span>
+      </button>
+      <div class="xdrop-body" id="xhbBody" inert>
+        <div>
+          <div class="xform-wrap">
+            <p class="xstep"><span class="xnum">01</span> Choose your headshot from the portrait gallery and download the one you like.</p>
+            <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
+              <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
+            </a>
+            <p class="xstep"><span class="xnum">02</span> Fill in your details and upload the headshot you chose.</p>
+
+            <form class="xform" id="xForm" action="/_s/submit" method="post" enctype="multipart/form-data" novalidate>
+              <div class="xfield">
+                <label for="xName">Full name <span class="req" aria-hidden="true">*</span></label>
+                <input id="xName" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="xNameHint xNameErr">
+                <p class="xhint" id="xNameHint">First and last name, as it should appear at the exhibition.</p>
+                <p class="xerr" id="xNameErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
+                <input id="xLinkedin" name="linkedin" type="url" inputmode="url" autocomplete="url" maxlength="300" placeholder="linkedin.com/in/your-name" aria-describedby="xLinkedinErr">
+                <p class="xerr" id="xLinkedinErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <label for="xFrom">Where you’re from <span class="opt">(optional)</span></label>
+                <input id="xFrom" name="from" type="text" maxlength="120" aria-describedby="xFromHint">
+                <p class="xhint" id="xFromHint">A place, such as a town, city or country. Not your ethnicity.</p>
+              </div>
+              <div class="xfield">
+                <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
+                <textarea id="xOverview" name="overview" rows="5" required maxlength="900" aria-describedby="xOverviewHint xOverviewErr"></textarea>
+                <p class="xhint" id="xOverviewHint">About three sentences. <span id="xCount">0 words</span></p>
+                <p class="xerr" id="xOverviewErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <span class="xlabel" id="xPhotoLabel">Your headshot <span class="req" aria-hidden="true">*</span></span>
+                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic,.jpg,.jpeg,.png,.webp" required class="sr-only" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
+                <label for="xPhoto" class="xfile">[ Choose photo ]</label>
+                <p class="xhint" id="xPhotoName">JPG, PNG or HEIC, up to 20 MB. We rename it to your full name.</p>
+                <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
+              </div>
+              <div class="xtrap" aria-hidden="true">
+                <label for="xWebsite">Leave this empty</label>
+                <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+              </div>
+              <button type="submit" class="xsubmit" id="xSubmit">[ Submit ]</button>
+              <p class="xstatus" id="xStatus" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="xdone" id="xDone" hidden tabindex="-1">
+              <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
+              <p>We have your details and your photo, saved as <span id="xDoneFile"></span>.</p>
+              <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
+              <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -1349,6 +1472,105 @@
   }
   const typeSponsorTitles = makeTyper([...document.querySelectorAll(".spons h2")].map(h => h.querySelector(".title") || h));
   const typeLinks = makeTyper([...document.querySelectorAll("#linksText .lt")], false);
+
+  // Links: Exhibition drop-down and the submission form
+  exhibition: {
+    const btn = document.querySelector(".lnks .xdrop");
+    if (!btn) break exhibition;
+    const body = document.getElementById("xhbBody");
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      body.classList.toggle("open", open);
+      body.inert = !open;
+    });
+
+    const form = document.getElementById("xForm");
+    const done = document.getElementById("xDone");
+    const status = document.getElementById("xStatus");
+    const submitBtn = document.getElementById("xSubmit");
+    const photo = document.getElementById("xPhoto");
+    const photoName = document.getElementById("xPhotoName");
+    const photoHint = photoName.textContent;
+    const overview = document.getElementById("xOverview");
+    const count = document.getElementById("xCount");
+    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto" };
+    const MAX_PHOTO = 20 * 1024 * 1024;
+
+    const words = t => (t.trim().match(/\S+/g) || []).length;
+    overview.addEventListener("input", () => {
+      const n = words(overview.value);
+      count.textContent = n + (n === 1 ? " word" : " words");
+    });
+    photo.addEventListener("change", () => {
+      const f = photo.files[0];
+      photoName.textContent = f ? f.name + " (" + (f.size / 1048576).toFixed(1) + " MB)" : photoHint;
+      showError("photo", f && f.size > MAX_PHOTO ? "That photo is too big. The limit is 20 MB." : "");
+    });
+
+    function showError(key, msg) {
+      const input = document.getElementById(fields[key]);
+      const err = document.getElementById(fields[key] + "Err");
+      if (err) err.textContent = msg || "";
+      if (input) input.setAttribute("aria-invalid", msg ? "true" : "false");
+    }
+    function check() {
+      const errs = {};
+      const name = form.name.value.trim().replace(/\s+/g, " ");
+      if (name.split(" ").filter(Boolean).length < 2) errs.name = "Please give your full name, first and last.";
+      const li = form.linkedin.value.trim();
+      if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
+      if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
+      const f = photo.files[0];
+      if (!f) errs.photo = "Please attach your headshot.";
+      else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
+      return errs;
+    }
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      Object.keys(fields).forEach(k => showError(k, ""));
+      const errs = check();
+      if (Object.keys(errs).length) {
+        Object.entries(errs).forEach(([k, m]) => showError(k, m));
+        status.textContent = "Some fields need another look.";
+        const first = document.getElementById(fields[Object.keys(errs)[0]]);
+        first.focus();
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "[ Sending… ]";
+      status.textContent = "Uploading your photo. This can take a moment.";
+      try {
+        const res = await fetch(form.action, { method: "POST", body: new FormData(form) });
+        let data = {};
+        try { data = await res.json(); } catch {}
+        if (!res.ok || !data.ok) {
+          if (data.fields) Object.entries(data.fields).forEach(([k, m]) => showError(k, m));
+          status.textContent = data.error || (res.status === 413 ? "That photo is too big. The limit is 20 MB." : "That did not send. Please try again.");
+          return;
+        }
+        const first = form.name.value.trim().split(/\s+/)[0];
+        document.getElementById("xDoneName").textContent = first ? ", " + first : "";
+        document.getElementById("xDoneFile").textContent = data.photoName || "your full name";
+        form.hidden = true; done.hidden = false; done.focus();
+        status.textContent = "";
+      } catch {
+        status.textContent = "That did not send. Check your connection and try again.";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "[ Submit ]";
+      }
+    });
+
+    document.getElementById("xAgain").addEventListener("click", () => {
+      form.reset();
+      count.textContent = "0 words";
+      photoName.textContent = photoHint;
+      done.hidden = true; form.hidden = false;
+      form.name.focus();
+    });
+  }
 
   // Bronze and In kind drop-downs
   document.querySelectorAll(".spons .drop").forEach(btn => {
