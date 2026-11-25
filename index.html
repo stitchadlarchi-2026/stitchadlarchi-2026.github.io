@@ -252,6 +252,8 @@
   .grads .gfrom:empty { display: none; }
   .grads .gdeg { color: var(--ink); }
   .grads .gdeg + .gfrom { margin-top: -.7em; }
+  .grads .gtitle { margin: .9em 0 -.3em; font: inherit; font-weight: 500; color: var(--red); letter-spacing: .03em; line-height: 1.35; }
+  .grads .gtitle:empty { display: none; }
   .grads .gov { margin: .4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.6; white-space: pre-line; }
   .grads .gproj { display: block; margin-top: clamp(28px, 5vh, 56px); }
   .grads .gproj img { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; object-position: left top; background: #f7f7f7; }
@@ -564,6 +566,11 @@
                 <p class="xhint" id="xFromHint">A place, such as a town, city or country. Not your ethnicity.</p>
               </div>
               <div class="xfield">
+                <label for="xTitle">Project title <span class="req" aria-hidden="true">*</span></label>
+                <input id="xTitle" name="title" type="text" required maxlength="150" aria-describedby="xTitleErr">
+                <p class="xerr" id="xTitleErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
                 <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
                 <textarea id="xOverview" name="overview" rows="6" required maxlength="1500" aria-describedby="xOverviewHint xOverviewErr"></textarea>
                 <p class="xhint" id="xOverviewHint">Up to 150 words. <span id="xCount">0 / 150</span></p>
@@ -586,7 +593,7 @@
               <div class="xfield xcheck">
                 <input id="xPublic" name="public" type="checkbox" value="yes" aria-describedby="xPublicHint">
                 <label for="xPublic">Show my profile and project on the STITCH website</label>
-                <p class="xhint" id="xPublicHint">Your photo, name, degree, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
+                <p class="xhint" id="xPublicHint">Your photo, name, degree, LinkedIn, project title, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
@@ -635,6 +642,7 @@
           <h2 class="gname" id="gpName"></h2>
           <p class="gfrom gdeg" id="gpDegree"></p>
           <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
+          <h3 class="gtitle" id="gpTitle"></h3>
           <p class="gov" id="gpOverview"></p>
           <a class="ilink" id="gpPdf" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>View project (PDF)</span></a>
         </div>
@@ -1659,7 +1667,7 @@
       degreeOther.hidden = degree.value !== "other";
       if (!degreeOther.hidden) degreeOther.focus();
     });
-    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
+    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", title: "xTitle", overview: "xOverview", photo: "xPhoto", project: "xProject" };
     const project = document.getElementById("xProject");
     const projectName = document.getElementById("xProjectName");
     const projectHint = projectName.textContent;
@@ -1714,6 +1722,7 @@
       else if (degree.value === "other" && !degreeOther.value.trim()) errs.degree = "Please write your degree.";
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
+      if (!form.title.value.trim()) errs.title = "Please give your project a title.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
       else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
       const f = photo.files[0];
@@ -1878,6 +1887,7 @@
     document.getElementById("gpDegree").textContent = g.degree || "";
     const li = document.getElementById("gpLinkedin");
     li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }
+    document.getElementById("gpTitle").textContent = g.title || "";
     document.getElementById("gpOverview").textContent = g.overview;
     const pdf = document.getElementById("gpPdf"), proj = document.getElementById("gpProject");
     pdf.hidden = !(g.project && g.project.kind === "pdf");
