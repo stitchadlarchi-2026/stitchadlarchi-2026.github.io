@@ -238,6 +238,7 @@
   .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
   .grads .ggrid.in .gcard { opacity: 1; transform: none; }
   @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .grads .gcredit { margin: clamp(36px, 6vh, 64px) 0 0; color: #999; font-size: .75em; letter-spacing: .06em; }
   .grads .gempty { margin: 0; color: #888; }
   .grads .gback { color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: clamp(20px, 4vh, 40px); }
   .grads .gback:hover { color: var(--red); }
@@ -329,11 +330,17 @@
   .lnks .xagain:hover { color: var(--red); }
   .lnks .xfile:focus-visible, .lnks .xsubmit:focus-visible, .lnks .xagain:focus-visible, .lnks .xdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .lnks .xstatus { margin: 0; font-size: .85em; text-transform: none; letter-spacing: 0; color: var(--red); min-height: 1.2em; }
-  .lnks .xcheck { grid-template-columns: auto 1fr; column-gap: .7em; align-items: start; }
+  .lnks .xcheck { grid-template-columns: 1.05em minmax(0, 1fr); column-gap: .7em; align-items: start; }
+  .lnks .xcheck .xerr { grid-column: 2; }
   .lnks .xcheck input { width: 1.05em; height: 1.05em; margin: .15em 0 0; accent-color: var(--red); }
   .lnks .xcheck label { font-size: .85em; line-height: 1.45; cursor: pointer; }
   .lnks .xcheck .xhint { grid-column: 2; }
   .lnks .xdone a { color: var(--red); }
+  .lnks .xcredit { margin-top: -.4em; }
+  .lnks .xprivacy { border-top: 1px solid #ddd; padding-top: 1.1em; text-transform: none; letter-spacing: 0; font-size: .8em; color: #666; line-height: 1.5; }
+  .lnks .xprivacy-title { margin: 0 0 .5em; text-transform: uppercase; letter-spacing: .08em; color: var(--ink); }
+  .lnks .xprivacy ul { margin: 0; padding-left: 1.1em; display: grid; gap: .35em; }
+  .lnks .xprivacy a { color: var(--red); }
   .lnks .xtrap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
@@ -519,6 +526,7 @@
             <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
               <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
             </a>
+            <p class="xhint xcredit">Portraits by Charlie Conybeare.</p>
             <p class="xstep"><span class="xnum">02</span> Fill in your details and upload the headshot you chose.</p>
 
             <form class="xform" id="xForm" action="/_s/submit" method="post" enctype="multipart/form-data" novalidate>
@@ -578,11 +586,26 @@
               <div class="xfield xcheck">
                 <input id="xPublic" name="public" type="checkbox" value="yes" aria-describedby="xPublicHint">
                 <label for="xPublic">Show my profile and project on the STITCH website</label>
-                <p class="xhint" id="xPublicHint">Your photo, name, degree, where you’re from, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
+                <p class="xhint" id="xPublicHint">Your photo, name, degree, LinkedIn, overview and project appear in the Student Directory for industry and visitors to see, once the committee has checked it. Leave this unticked to keep everything private.</p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
                 <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+              </div>
+              <div class="xfield xcheck" id="xRightsField">
+                <input id="xRights" name="rights" type="checkbox" value="yes" aria-describedby="xRightsHint xRightsErr">
+                <label for="xRights">My project is my own work, or I have permission to share it</label>
+                <p class="xhint" id="xRightsHint">Needed if you upload a project. Leave out confidential client information, and check with anyone you worked with before sharing group work or their images.</p>
+                <p class="xerr" id="xRightsErr" aria-live="polite"></p>
+              </div>
+              <div class="xprivacy">
+                <p class="xprivacy-title">How we use your details</p>
+                <ul>
+                  <li>The STITCH Exhibition Committee collects this to prepare the 2026 graduate exhibition.</li>
+                  <li>Only the committee can see your submission. It appears in the Student Directory only if you tick the box above, and only after the committee has checked it. Where you’re from is never shown publicly.</li>
+                  <li>Your headshot is by Charlie Conybeare and is used with his permission. Please don’t reuse it elsewhere without asking him.</li>
+                  <li>To change or remove anything, submit again or email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>. We delete private submissions after the exhibition.</li>
+                </ul>
               </div>
               <button type="submit" class="xsubmit" id="xSubmit">[ Submit ]</button>
               <p class="xstatus" id="xStatus" role="status" aria-live="polite"></p>
@@ -608,6 +631,7 @@
       <h1 class="ghead" id="gradHead">Student directory</h1>
       <div class="gdegs" id="gradGroups"></div>
       <p class="gempty" id="gradEmpty" hidden>Student profiles will appear here soon.</p>
+      <p class="gcredit">Portraits by Charlie Conybeare.</p>
     </div>
     <article class="gview gprof" id="gradProfile" hidden tabindex="-1" aria-labelledby="gpName">
       <a class="gback" href="#directory">← Student directory</a>
@@ -616,7 +640,6 @@
         <div class="ginfo">
           <h2 class="gname" id="gpName"></h2>
           <p class="gfrom gdeg" id="gpDegree"></p>
-          <p class="gfrom" id="gpFrom"></p>
           <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
           <p class="gov" id="gpOverview"></p>
           <a class="ilink" id="gpPdf" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>View project (PDF)</span></a>
@@ -1642,7 +1665,8 @@
       degreeOther.hidden = degree.value !== "other";
       if (!degreeOther.hidden) degreeOther.focus();
     });
-    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
+    const rights = document.getElementById("xRights");
+    const fields = { rights: "xRights", name: "xName", degree: "xDegree", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", project: "xProject" };
     const project = document.getElementById("xProject");
     const projectName = document.getElementById("xProjectName");
     const projectHint = projectName.textContent;
@@ -1704,6 +1728,7 @@
       else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
       const pf = project.files[0];
       if (pf && pf.size > MAX_PROJECT) errs.project = "That file is too big. The limit is 30 MB.";
+      if (pf && !rights.checked) errs.rights = "Please confirm you can share this project.";
       return errs;
     }
 
@@ -1859,7 +1884,6 @@
     document.getElementById("gpPhoto").alt = g.name;
     document.getElementById("gpName").textContent = g.name;
     document.getElementById("gpDegree").textContent = g.degree || "";
-    document.getElementById("gpFrom").textContent = g.from || "";
     const li = document.getElementById("gpLinkedin");
     li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }
     document.getElementById("gpOverview").textContent = g.overview;

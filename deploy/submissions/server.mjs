@@ -5,7 +5,8 @@
  * LinkedIn and "where you're from", a short project overview, the headshot
  * they picked from the portrait gallery, and optionally one project file (an
  * image or a PDF). They also choose whether their profile may appear on the
- * site's Student Directory.
+ * site's Student Directory. "Where you're from" is kept for the committee and
+ * never published.
  *
  * Nothing reaches the Student Directory until the committee approves it on the
  * review page, and only if the graduate said yes. If someone submits again,
@@ -295,6 +296,8 @@ async function submit(req, res) {
   if (!isFile(photo)) problems.photo = 'Please attach your headshot.';
   else if (photo.size > MAX_PHOTO) problems.photo = 'That photo is too big. The limit is 20 MB.';
   if (isFile(project) && project.size > MAX_PROJECT) problems.project = 'That file is too big. The limit is 30 MB.';
+  const rights = ['yes', 'on', 'true'].includes(String(form.get('rights') ?? '').toLowerCase());
+  if (isFile(project) && !rights) problems.rights = 'Please confirm you can share this project.';
   if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
 
   const photoBytes = Buffer.from(await photo.arrayBuffer());
@@ -333,6 +336,7 @@ async function submit(req, res) {
     from,
     overview,
     public: isPublic,
+    rightsConfirmed: rights,
     photo: { ...stored(id, '', photoExt, photoBytes), originalName: oneLine(photo.name, 200) },
     photoWeb: photoWeb ? stored(id, '.web', 'jpg', photoWeb) : null,
     project: projectBytes ? { ...stored(id, '.project', projectExt, projectBytes), originalName: oneLine(project.name, 200) } : null,
@@ -377,7 +381,6 @@ async function catalogue() {
       slug,
       name: r.name,
       degree: r.degree ?? '',
-      from: r.from,
       linkedin: r.linkedin,
       overview: r.overview,
       photo: `/_s/media/${photo.file}`,

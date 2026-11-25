@@ -95,6 +95,11 @@ committee approved** at `/_s/review`. A resubmission waits for approval while
 the earlier approved profile stays up; a resubmission without the opt-in takes
 the profile down at once. Approvals live in `approvals.state` on the volume.
 Public routes: `/_s/graduates.json` and `/_s/media/<file>` (approved files only).
+"Where you're from" is kept for the committee and never published. A project
+upload needs the graduate to confirm it is theirs to share. The form tells
+people how their details are used, credits Charlie Conybeare for the portraits,
+and says private submissions are deleted after the exhibition: do that, e.g.
+with the backup command below and then `docker volume rm`.
 
 ```bash
 # once, before the first deploy that includes it: set the download password
