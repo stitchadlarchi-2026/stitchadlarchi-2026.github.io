@@ -208,6 +208,21 @@
     padding-inline: var(--x1, max(16px, 7vw)) var(--x1, max(16px, 7vw));
   }
   .grads .ghead { color: var(--red); margin: 0 0 clamp(28px, 5vh, 56px); font: inherit; font-size: clamp(20px, 2.4vw, 34px); font-weight: 500; letter-spacing: .02em; line-height: 1.15; }
+  .grads .gdegs { display: grid; gap: .9em; justify-items: start; }
+  .grads .gdeg { width: 100%; display: grid; justify-items: start; }
+  .grads .gdrop {
+    appearance: none; background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; text-align: left;
+  }
+  .grads .gdrop:hover .lt { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .grads .gdrop .gcount { color: #999; text-decoration: none !important; }
+  .grads .gdrop .plus { display: inline-block; line-height: 1; transition: transform .3s ease; text-decoration: none !important; color: var(--ink); }
+  .grads .gdrop[aria-expanded="true"] .plus { transform: rotate(45deg); }
+  .grads .gdrop:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .grads .gdrop-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s ease; width: 100%; }
+  .grads .gdrop-body > div { overflow: hidden; min-height: 0; }
+  .grads .gdrop-body.open { grid-template-rows: 1fr; }
+  .grads .gdrop-body .ggrid { padding: clamp(20px, 3.5vh, 36px) 0 clamp(28px, 5vh, 48px); }
   .grads .ggrid {
     list-style: none; margin: 0; padding: 0;
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -591,7 +606,7 @@
   <section class="grads" id="gradText">
     <div class="gview" id="gradList">
       <h1 class="ghead" id="gradHead">Student directory</h1>
-      <ul class="ggrid" id="gradGrid"></ul>
+      <div class="gdegs" id="gradGroups"></div>
       <p class="gempty" id="gradEmpty" hidden>Student profiles will appear here soon.</p>
     </div>
     <article class="gview gprof" id="gradProfile" hidden tabindex="-1" aria-labelledby="gpName">
@@ -1769,7 +1784,9 @@
 
   // ================= GRADUATES =================
   // Approved profiles come from the submissions service; nothing is baked into the page.
-  const gradGrid = document.getElementById("gradGrid");
+  const gradGroups = document.getElementById("gradGroups");
+  // Degrees in the order the form lists them; any typed under "Other" follow, A to Z.
+  const DEGREE_ORDER = [...document.querySelectorAll("#xDegree option")].map(o => o.textContent).filter(t => t && t !== "Other" && t !== "Choose your degree");
   const gradList = document.getElementById("gradList");
   const gradProfile = document.getElementById("gradProfile");
   let graduates = null, gradLoading = null;
@@ -1781,7 +1798,7 @@
       .catch(() => ({ graduates: [] }))
       .then(d => {
         graduates = Array.isArray(d.graduates) ? d.graduates : [];
-        gradGrid.replaceChildren(...graduates.map((g, i) => {
+        const card = (g, i) => {
           const li = document.createElement("li");
           const a = document.createElement("a");
           a.className = "gcard"; a.href = "#directory/" + encodeURIComponent(g.slug);
@@ -1792,6 +1809,38 @@
           a.append(img, n);
           if (g.degree) { const f = document.createElement("span"); f.className = "gc-from"; f.textContent = g.degree; a.append(f); }
           li.append(a); return li;
+        };
+        const groups = new Map();
+        for (const g of graduates) {
+          const d = g.degree || "Other";
+          if (!groups.has(d)) groups.set(d, []);
+          groups.get(d).push(g);
+        }
+        const rank = d => { const i = DEGREE_ORDER.indexOf(d); return i < 0 ? DEGREE_ORDER.length : i; };
+        const names = [...groups.keys()].sort((x, y) => rank(x) - rank(y) || x.localeCompare(y, "en-AU"));
+        gradGroups.replaceChildren(...names.map((d, gi) => {
+          const people = groups.get(d);
+          const sec = document.createElement("section"); sec.className = "gdeg";
+          const btn = document.createElement("button");
+          btn.type = "button"; btn.className = "ilink gdrop"; btn.setAttribute("aria-expanded", "false");
+          const id = "gdeg-" + gi; btn.setAttribute("aria-controls", id);
+          btn.innerHTML = '<span class="sq" aria-hidden="true"></span><span class="lt"></span><span class="gcount"></span><span class="plus" aria-hidden="true">+</span>';
+          btn.querySelector(".lt").textContent = d;
+          btn.querySelector(".gcount").textContent = "(" + people.length + ")";
+          const body = document.createElement("div"); body.className = "gdrop-body"; body.id = id; body.inert = true;
+          const inner = document.createElement("div");
+          const ul = document.createElement("ul"); ul.className = "ggrid";
+          ul.append(...people.map(card));
+          inner.append(ul); body.append(inner);
+          btn.addEventListener("click", () => {
+            const open = btn.getAttribute("aria-expanded") !== "true";
+            btn.setAttribute("aria-expanded", String(open));
+            body.classList.toggle("open", open); body.inert = !open;
+            ul.classList.remove("in");
+            if (open) requestAnimationFrame(() => requestAnimationFrame(() => ul.classList.add("in")));
+          });
+          sec.append(btn, body);
+          return sec;
         }));
         document.getElementById("gradEmpty").hidden = graduates.length > 0;
         gradLoading = null;
@@ -1803,8 +1852,6 @@
     const g = slug && graduates && graduates.find(x => x.slug === slug);
     gradList.hidden = !!g; gradProfile.hidden = !g;
     if (!g) {
-      gradGrid.classList.remove("in");
-      requestAnimationFrame(() => requestAnimationFrame(() => gradGrid.classList.add("in")));
       document.title = baseTitle;
       return;
     }
