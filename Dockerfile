@@ -28,9 +28,4 @@ RUN rm -rf /usr/share/nginx/html/deploy \
 # so the strip above cannot remove it, and nginx serves it at /_u.js.
 COPY deploy/usage/beacon.js /usr/share/nginx/beacon.js
 
-# Where nginx spools an upload before handing it to `submissions`. compose
-# mounts a volume here; made in the image and owned by nginx so a fresh volume
-# starts out writable by the workers.
-RUN mkdir -p /var/lib/nginx-body && chown nginx:nginx /var/lib/nginx-body
-
 EXPOSE 80

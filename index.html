@@ -247,7 +247,12 @@
   }
   .lnks .xfile { background: transparent; color: var(--ink); }
   .lnks .xfile:hover { color: var(--red); }
-  #xPhoto:focus-visible + .xfile { outline: 1px solid var(--red); outline-offset: 2px; }
+  .lnks .xfilein:focus-visible + .xfile { outline: 1px solid var(--red); outline-offset: 2px; }
+  .lnks .xprogress { display: grid; gap: .45em; width: 100%; }
+  .lnks .xprogress[hidden] { display: none; }
+  .lnks .xbar { height: 6px; background: #e4e4e4; width: 100%; overflow: hidden; }
+  .lnks .xbar span { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s ease; }
+  .lnks .xdone ul { margin: 0; padding-left: 1.1em; text-transform: none; letter-spacing: 0; line-height: 1.6; }
   .lnks .xsubmit { background: var(--red); color: var(--white); margin-top: .4em; }
   .lnks .xsubmit:hover { background: var(--ink); }
   .lnks .xsubmit[disabled] { opacity: .55; cursor: progress; }
@@ -265,7 +270,7 @@
   .lnks .xdone { display: grid; gap: .8em; justify-items: start; margin-top: .4em; outline: none; }
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
   .lnks .xdone .xdone-title { text-transform: uppercase; letter-spacing: .03em; color: var(--red); }
-  .lnks .xdone #xDoneFile { white-space: nowrap; }
+  .lnks .xdone li span { white-space: nowrap; }
   @media (max-width: 700px) { .lnks .xform-wrap { padding-left: 0; } }
 
   /* ---------- sponsors page: one list, split by tier, logos in left-aligned rows ---------- */
@@ -443,9 +448,9 @@
             <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
               <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
             </a>
-            <p class="xstep"><span class="xnum">02</span> Fill in your details and upload the headshot you chose.</p>
+            <p class="xstep"><span class="xnum">02</span> Fill in your details and upload three files: the headshot you chose, your project poster, and your project booklet.</p>
 
-            <form class="xform" id="xForm" action="/_s/submit" method="post" enctype="multipart/form-data" novalidate>
+            <form class="xform" id="xForm" novalidate>
               <div class="xfield">
                 <label for="xName">Full name <span class="req" aria-hidden="true">*</span></label>
                 <input id="xName" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="xNameHint xNameErr">
@@ -470,10 +475,24 @@
               </div>
               <div class="xfield">
                 <span class="xlabel" id="xPhotoLabel">Your headshot <span class="req" aria-hidden="true">*</span></span>
-                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="sr-only" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
+                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="sr-only xfilein" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
                 <label for="xPhoto" class="xfile">[ Choose photo ]</label>
-                <p class="xhint" id="xPhotoName">JPG, PNG or WebP, up to 20 MB. iPhone photos are converted for you. We rename it to your full name.</p>
+                <p class="xhint" id="xPhotoName">JPG, PNG or WebP, up to 20 MB. iPhone photos are converted for you.</p>
                 <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <span class="xlabel" id="xPosterLabel">Your project poster <span class="req" aria-hidden="true">*</span></span>
+                <input id="xPoster" name="poster" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required class="sr-only xfilein" aria-labelledby="xPosterLabel" aria-describedby="xPosterName xPosterErr">
+                <label for="xPoster" class="xfile">[ Choose poster ]</label>
+                <p class="xhint" id="xPosterName">PDF up to 300 MB, or JPG or PNG up to 60 MB.</p>
+                <p class="xerr" id="xPosterErr" aria-live="polite"></p>
+              </div>
+              <div class="xfield">
+                <span class="xlabel" id="xBookletLabel">Your project booklet <span class="req" aria-hidden="true">*</span></span>
+                <input id="xBooklet" name="booklet" type="file" accept="application/pdf,.pdf" required class="sr-only xfilein" aria-labelledby="xBookletLabel" aria-describedby="xBookletName xBookletErr">
+                <label for="xBooklet" class="xfile">[ Choose booklet ]</label>
+                <p class="xhint" id="xBookletName">PDF up to 1 GB. A big file can take a while: keep this page open until it says it is done.</p>
+                <p class="xerr" id="xBookletErr" aria-live="polite"></p>
               </div>
               <div class="xtrap" aria-hidden="true">
                 <label for="xWebsite">Leave this empty</label>
@@ -481,8 +500,8 @@
               </div>
               <div class="xfield xnotice" id="xNotice">
                 <p class="xlabel">How we use your details</p>
-                <p class="xhint">The STITCH committee collects your name, headshot and project overview, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
-                <p class="xhint">Your details are stored on a server in Australia, run for STITCH by NCH Consultancy, with encrypted backups held by Cloudflare. We remove location and camera data from your photo when you send it. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>.</p>
+                <p class="xhint">The STITCH committee collects your name, headshot, project overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
+                <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a>.</p>
                 <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
                 <label class="xcheck" for="xConsent">
                   <input id="xConsent" name="consent" type="checkbox" value="yes" required aria-describedby="xNotice xConsentErr">
@@ -492,12 +511,17 @@
               </div>
               <div class="cf-turnstile" data-sitekey="0x4AAAAAAGR6oCousCtk41xY" data-theme="light"></div>
               <button type="submit" class="xsubmit" id="xSubmit">[ Submit ]</button>
+              <div class="xprogress" id="xProgress" hidden>
+                <div class="xbar" aria-hidden="true"><span id="xBarFill"></span></div>
+                <p class="xhint" id="xProgressText"></p>
+              </div>
               <p class="xstatus" id="xStatus" role="status" aria-live="polite"></p>
             </form>
 
             <div class="xdone" id="xDone" hidden tabindex="-1">
               <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
-              <p>We have your details and your photo, saved as <span id="xDoneFile"></span>.</p>
+              <p>We have your details and your files, saved as:</p>
+              <ul id="xDoneFiles"></ul>
               <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
               <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
             </div>
@@ -1510,13 +1534,45 @@
     const done = document.getElementById("xDone");
     const status = document.getElementById("xStatus");
     const submitBtn = document.getElementById("xSubmit");
-    const photo = document.getElementById("xPhoto");
-    const photoName = document.getElementById("xPhotoName");
-    const photoHint = photoName.textContent;
     const overview = document.getElementById("xOverview");
     const count = document.getElementById("xCount");
-    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", consent: "xConsent" };
-    const MAX_PHOTO = 20 * 1024 * 1024;
+    const progress = document.getElementById("xProgress");
+    const barFill = document.getElementById("xBarFill");
+    const progressText = document.getElementById("xProgressText");
+    const fields = { name: "xName", linkedin: "xLinkedin", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
+
+    // The three uploads. Sizes in MB, per type; the server checks them again,
+    // and checks each file's real first bytes once it has arrived.
+    const MB = 1024 * 1024;
+    const FILES = {
+      photo:   { label: "headshot", types: { jpg: 20, png: 20, webp: 20 } },
+      poster:  { label: "poster",   types: { pdf: 300, jpg: 60, png: 60 } },
+      booklet: { label: "booklet",  types: { pdf: 1024 } },
+    };
+    const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };
+    const extOf = f => EXT[f.type] || ({ jpg: "jpg", jpeg: "jpg", png: "png", webp: "webp", pdf: "pdf" })[(f.name.split(".").pop() || "").toLowerCase()];
+    const sizeText = n => n >= 1024 * MB ? (n / 1024 / MB).toFixed(2) + " GB" : (n / MB).toFixed(1) + " MB";
+    const hints = {};
+    for (const kind of Object.keys(FILES)) {
+      const input = document.getElementById(fields[kind]);
+      const hint = document.getElementById(fields[kind] + "Name");
+      hints[kind] = hint.textContent;
+      input.addEventListener("change", () => {
+        const f = input.files[0];
+        hint.textContent = f ? f.name + " (" + sizeText(f.size) + ")" : hints[kind];
+        showError(kind, f ? fileProblem(kind, f) : "");
+      });
+    }
+    function fileProblem(kind, f) {
+      const spec = FILES[kind], ext = extOf(f);
+      if (!ext || !spec.types[ext]) {
+        const t = Object.keys(spec.types).map(e => e.toUpperCase());
+        return "Your " + spec.label + " must be a " + (t.length === 1 ? t[0] : t.slice(0, -1).join(", ") + " or " + t[t.length - 1]) + ".";
+      }
+      if (f.size > spec.types[ext] * MB) return "That " + spec.label + " is too big. The limit is " + spec.types[ext] + " MB for " + ext.toUpperCase() + ".";
+      if (f.size === 0) return "That file is empty.";
+      return "";
+    }
 
     const MAX_WORDS = 150;
     const words = t => (t.trim().match(/\S+/g) || []).length;
@@ -1525,12 +1581,6 @@
       count.textContent = n + " / " + MAX_WORDS;
       count.classList.toggle("over", n > MAX_WORDS);
     });
-    photo.addEventListener("change", () => {
-      const f = photo.files[0];
-      photoName.textContent = f ? f.name + " (" + (f.size / 1048576).toFixed(1) + " MB)" : photoHint;
-      showError("photo", f && f.size > MAX_PHOTO ? "That photo is too big. The limit is 20 MB." : "");
-    });
-
     form.consent.addEventListener("change", () => { if (form.consent.checked) showError("consent", ""); });
 
     function showError(key, msg) {
@@ -1547,22 +1597,101 @@
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
       else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
-      const f = photo.files[0];
-      if (!f) errs.photo = "Please attach your headshot.";
-      else if (f.size > MAX_PHOTO) errs.photo = "That photo is too big. The limit is 20 MB.";
+      for (const kind of Object.keys(FILES)) {
+        const f = document.getElementById(fields[kind]).files[0];
+        const problem = f ? fileProblem(kind, f) : "Please attach your " + FILES[kind].label + ".";
+        if (problem) errs[kind] = problem;
+      }
       if (!form.consent.checked) errs.consent = "Please tick the box to agree to how your details are used.";
       return errs;
     }
 
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    async function postJson(path, body, tries) {
+      // Retried on a dropped connection or a server hiccup, never on an answer.
+      for (let n = 0; ; n++) {
+        try {
+          const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+          if (res.status >= 500 && res.status !== 503 && n < tries - 1) { await wait(2000 * 2 ** n); continue; }
+          // A whole class on one campus address can meet the per-address limit; wait it out.
+          if (res.status === 429 && n < tries + 3) { await wait(1000 * (Number(res.headers.get("retry-after")) || 20)); continue; }
+          let data = {};
+          try { data = await res.json(); } catch {}
+          return { res, data };
+        } catch (e) {
+          if (n >= tries - 1) throw e;
+          await wait(2000 * 2 ** n);
+        }
+      }
+    }
+
+    // One part to R2 on its presigned URL, with progress. Resolves to the ETag.
+    function putPart(url, blob, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", url);
+        xhr.upload.onprogress = e => onProgress(e.loaded);
+        xhr.onload = () => {
+          const etag = xhr.getResponseHeader("ETag");
+          if (xhr.status >= 200 && xhr.status < 300 && etag) resolve(etag);
+          else reject(Object.assign(new Error("part " + xhr.status), { status: xhr.status }));
+        };
+        xhr.onerror = () => reject(new Error("network"));
+        xhr.ontimeout = () => reject(new Error("timeout"));
+        xhr.timeout = 15 * 60 * 1000;
+        xhr.send(blob);
+      });
+    }
+
+    // Every part of every file, four at a time, each retried with a growing wait.
+    async function uploadAll(plan, partSize, files) {
+      const jobs = [];
+      for (const [kind, { urls }] of Object.entries(plan)) {
+        urls.forEach((url, i) => jobs.push({ kind, i, url, blob: files[kind].slice(i * partSize, Math.min((i + 1) * partSize, files[kind].size)) }));
+      }
+      const total = jobs.reduce((n, j) => n + j.blob.size, 0);
+      const loaded = new Map();
+      const etags = Object.fromEntries(Object.keys(plan).map(k => [k, []]));
+      const show = () => {
+        let sent = 0; loaded.forEach(v => sent += v);
+        const pct = Math.min(100, Math.floor(sent / total * 100));
+        barFill.style.width = pct + "%";
+        progressText.textContent = "Uploading " + pct + "%: " + sizeText(sent) + " of " + sizeText(total) + ". Keep this page open.";
+      };
+      let next = 0;
+      async function worker() {
+        while (next < jobs.length) {
+          const job = jobs[next++];
+          for (let attempt = 0; ; attempt++) {
+            try {
+              etags[job.kind][job.i] = await putPart(job.url, job.blob, l => { loaded.set(job, l); show(); });
+              loaded.set(job, job.blob.size); show();
+              break;
+            } catch (e) {
+              loaded.set(job, 0); show();
+              // 403 means the signed URL has expired or was refused: retrying will not help.
+              if (e.status === 403 || attempt >= 6) throw e;
+              await wait(Math.min(30000, 1000 * 2 ** attempt));
+            }
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+      return etags;
+    }
+
+    let uploading = false;
+    window.addEventListener("beforeunload", e => { if (uploading) { e.preventDefault(); e.returnValue = ""; } });
+
     form.addEventListener("submit", async e => {
       e.preventDefault();
+      if (uploading) return;
       Object.keys(fields).forEach(k => showError(k, ""));
       const errs = check();
       if (Object.keys(errs).length) {
         Object.entries(errs).forEach(([k, m]) => showError(k, m));
         status.textContent = "Some fields need another look.";
-        const first = document.getElementById(fields[Object.keys(errs)[0]]);
-        first.focus();
+        document.getElementById(fields[Object.keys(errs)[0]]).focus();
         return;
       }
       // Turnstile writes its token into the form when its check passes.
@@ -1571,26 +1700,58 @@
         status.textContent = "Still checking you are not a robot. Please wait a moment and press Submit again.";
         return;
       }
+      const files = Object.fromEntries(Object.keys(FILES).map(k => [k, document.getElementById(fields[k]).files[0]]));
+      uploading = true;
       submitBtn.disabled = true;
       submitBtn.textContent = "[ Sending… ]";
-      status.textContent = "Uploading your photo. This can take a moment.";
+      status.textContent = "";
+      progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
       try {
-        const res = await fetch(form.action, { method: "POST", body: new FormData(form) });
-        let data = {};
-        try { data = await res.json(); } catch {}
-        if (!res.ok || !data.ok) {
-          if (data.fields) Object.entries(data.fields).forEach(([k, m]) => showError(k, m));
-          status.textContent = data.error || (res.status === 413 ? "That photo is too big. The limit is 20 MB." : "That did not send. Please try again.");
+        const started = await postJson("/_s/start", {
+          name: form.name.value, linkedin: form.linkedin.value, from: form.from.value, overview: overview.value,
+          consent: form.consent.checked, website: form.website.value, turnstile: robot.value,
+          files: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, { size: f.size, type: f.type || "", name: f.name }])),
+        }, 3);
+        if (!started.res.ok || !started.data.ok) {
+          if (started.data.fields) Object.entries(started.data.fields).forEach(([k, m]) => showError(k, m));
+          status.textContent = started.data.error || "That did not send. Please try again.";
+          return;
+        }
+        if (started.data.decoy) return;
+        let etags;
+        try {
+          etags = await uploadAll(started.data.files, started.data.partSize, files);
+        } catch {
+          status.textContent = "The upload stopped. Check your connection and press Submit to try again.";
+          return;
+        }
+        progressText.textContent = "Checking your files…";
+        const finished = await postJson("/_s/complete", {
+          id: started.data.id, token: started.data.token,
+          files: Object.fromEntries(Object.entries(etags).map(([k, list]) => [k, { etags: list }])),
+        }, 5);
+        if (!finished.res.ok || !finished.data.ok) {
+          if (finished.data.fields) Object.entries(finished.data.fields).forEach(([k, m]) => showError(k, m));
+          status.textContent = finished.data.error || "That did not send. Please try again.";
           return;
         }
         const first = form.name.value.trim().split(/\s+/)[0];
         document.getElementById("xDoneName").textContent = first ? ", " + first : "";
-        document.getElementById("xDoneFile").textContent = data.photoName || "your full name";
+        const list = document.getElementById("xDoneFiles");
+        list.replaceChildren(...Object.keys(FILES).filter(k => finished.data.names[k]).map(k => [k, finished.data.names[k]]).map(([k, n]) => {
+          const li = document.createElement("li");
+          const span = document.createElement("span");
+          span.textContent = n;
+          li.append(FILES[k].label[0].toUpperCase() + FILES[k].label.slice(1) + ": ", span);
+          return li;
+        }));
         form.hidden = true; done.hidden = false; done.focus();
         status.textContent = "";
       } catch {
         status.textContent = "That did not send. Check your connection and try again.";
       } finally {
+        uploading = false;
+        progress.hidden = true;
         submitBtn.disabled = false;
         submitBtn.textContent = "[ Submit ]";
         // A Turnstile token works once; get a fresh one for the next attempt.
@@ -1601,7 +1762,7 @@
     document.getElementById("xAgain").addEventListener("click", () => {
       form.reset();
       count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
-      photoName.textContent = photoHint;
+      for (const kind of Object.keys(FILES)) document.getElementById(fields[kind] + "Name").textContent = hints[kind];
       done.hidden = true; form.hidden = false;
       form.name.focus();
     });

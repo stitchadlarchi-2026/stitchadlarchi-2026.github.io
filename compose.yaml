@@ -38,11 +38,6 @@ services:
       - /var/cache/nginx:size=16m
       - /var/run:size=1m
       - /tmp:size=8m
-    # Uploads to the exhibition form are spooled here before nginx hands them
-    # on. On disk, not tmpfs: tmpfs counts against mem_limit, and one photo is
-    # 20 MB. nginx deletes each file once the request is done.
-    volumes:
-      - web-body-temp:/var/lib/nginx-body
     logging:
       driver: json-file
       options:
@@ -86,13 +81,13 @@ services:
       start_period: 5s
       retries: 3
 
-  # Exhibition submissions: the form on the Links page posts here through
-  # nginx, and the committee downloads everything as one zip (an Excel sheet
-  # plus each headshot renamed after its person) from /_s/export, behind
-  # SUBMISSIONS_KEY. Unlike `usage`, this one keeps data: it lives on the
-  # `submissions-data` volume, so a redeploy or reboot keeps every submission.
-  # nginx does not depend on it: if it is down, the page is unaffected and the
-  # form says it could not send. See deploy/submissions/.
+  # Exhibition submissions: a headshot, a poster and a booklet from each
+  # graduate. The files go from the browser straight to the R2 bucket named
+  # below, never through nginx or the home connection; this service signs the
+  # upload URLs, checks what arrived, and copies it down from R2 at its own pace.
+  # The committee downloads from /_s/export, behind SUBMISSIONS_KEY. nginx does
+  # not depend on it: if it is down, the page is unaffected and the form says it
+  # could not send. See deploy/submissions/ and deploy/README.md.
   submissions:
     build:
       context: deploy/submissions
@@ -101,12 +96,19 @@ services:
       SUBMISSIONS_KEY: ${SUBMISSIONS_KEY:-}
       # Required: a public form without bot protection does not deploy.
       TURNSTILE_SECRET: ${TURNSTILE_SECRET:?set TURNSTILE_SECRET in .env}
+      # The bucket uploads land in, and a key that can reach that bucket only.
+      R2_ENDPOINT: ${R2_ENDPOINT:?set R2_ENDPOINT in .env}
+      R2_BUCKET: ${R2_BUCKET:?set R2_BUCKET in .env}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID in .env}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY in .env}
     volumes:
       - submissions-data:/data
-    # One 20 MB upload is parsed at a time (MAX_PARSING in server.mjs) and
-    # peaks near 120 MB; the rest wait their turn rather than share this.
-    mem_limit: 256m
-    memswap_limit: 256m
+      - submissions-files:/files
+    # Uploads never pass through this process. What it holds in memory is one
+    # image being stripped of its metadata per transfer (TRANSFERS=2, a 60 MB
+    # poster image at most), a few times over while it is read.
+    mem_limit: 512m
+    memswap_limit: 512m
     pids_limit: 64
     cpus: 0.5
     security_opt:
@@ -150,8 +152,9 @@ services:
         max-file: '3'
 
 volumes:
-  # nginx's upload spool. Scratch space only; safe to delete.
-  web-body-temp:
-  # Every exhibition submission and headshot. Back this up with the box; it is
-  # the only thing in this stack that cannot be rebuilt from git.
+  # Every submission record and headshot. Backed up nightly by nch-backup-all.
   submissions-data:
+  # Every poster and booklet: tens of GB, too big for the nightly archive. The
+  # off-box copy is the R2 bucket, which keeps each object until the deletion
+  # date (SECURITY.md).
+  submissions-files:

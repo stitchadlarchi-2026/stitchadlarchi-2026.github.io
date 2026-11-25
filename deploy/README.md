@@ -31,10 +31,10 @@ GitHub credential that can write here. The server pulls; GitHub never pushes.
 | Path | What it is |
 |---|---|
 | `Dockerfile` | Bakes the site into `nginx:1.29-alpine`. Copies the whole repo, then strips the infrastructure back out, so new pages and assets ship without anyone editing it |
-| `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `submissions` (the exhibition form) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
+| `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `submissions` (the exhibition form, with the R2 bucket `stitch-uploads`) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
 | `deploy/nginx.conf` | Security headers, gzip, cache policy, the `www` → apex redirect, and the usage beacon |
 | `deploy/usage/` | The usage counters. `beacon.js` is added to every page by nginx as it serves it, so `index.html` never carries it. It sends one word per page view or click: no cookie, no storage, no identifier. `server.mjs` counts the words and serves the totals on `127.0.0.1:9094` for the monitoring page. If it is down, the page is unaffected |
-| `deploy/submissions/` | The exhibition form on the Links page. `server.mjs` checks each submission (full name, optional LinkedIn and place, project overview, headshot) and writes it to the `submissions-data` volume. The committee downloads everything as one zip from `/_s/export`: `submissions.xlsx` plus `photos/<Full Name>.jpg`, latest entry per person. Password: `SUBMISSIONS_KEY` in `.env`. `dev.mjs` runs the site and the form locally for trying changes |
+| `deploy/submissions/` | The exhibition form on the Links page: each graduate's details plus a headshot, a poster and a booklet. The files go from the browser straight to the R2 bucket `stitch-uploads`; `server.mjs` signs the upload URLs, checks what arrived, and copies it down to this box. `r2.mjs` talks to R2, `zip.mjs` builds the committee's downloads, `metadata.mjs` strips image metadata. `dev.mjs` runs the site and the form locally. See *Exhibition submissions* below |
 | `deploy/provision-tunnel.sh` | Creates or reuses the Cloudflare tunnel and DNS. Idempotent; safe to re-run |
 | `.env.example` | The variable names. The real `.env` lives only on the server and is gitignored |
 
@@ -82,41 +82,81 @@ after the box's Sunday-morning reboot, and on the monitoring page at
 
 ## Exhibition submissions
 
-Graduates fill in the form under **Links → Exhibition**. Each submission is a
-JSON record and a photo on the `submissions-data` volume, written atomically, so
-a record on disk always has its photo. The decisions behind the limits are in
-`SECURITY.md`.
+Graduates fill in the form under **Links → Exhibition**: their details, a
+headshot, their project poster and their project booklet. The decisions behind
+every limit are in `SECURITY.md`; the load test behind them is in
+`deploy/submissions/LOADTEST.md`.
 
-- **Photos:** JPG, PNG or WebP, up to 20 MB, checked by their bytes. Location,
-  camera and other metadata are removed before the photo is saved. HEIC is
-  refused; iPhones convert to JPEG by themselves for this form.
-- **Limits:** 20 submissions a minute per address, one upload processed at a
-  time (up to 40 wait), 3.5 GB in all.
-- **Bot check:** Cloudflare Turnstile, widget **STITCH exhibition form**. The
-  stack will not start without `TURNSTILE_SECRET` in `.env`.
-- **Deletion:** after 31 January 2027 the service empties the volume and the
-  form closes, as the notice on the form promises. To move the date, change
-  `DELETE_AFTER` in `server.mjs`, the notice in `index.html`, and `CONSENT` in
-  `server.mjs`, together.
-- **Backups:** nightly, by `nch-backup-all` on the server.
+### How a submission travels
 
-```bash
-# set the download password, without printing it (once; already done 2026-11-25)
-echo "SUBMISSIONS_KEY=$(openssl rand -base64 24)" >> ~/stitch-exhibition/.env
-
-# the committee's download, from anywhere (any username, the key as password)
-https://stitchexhibition.com/_s/export      # submissions.xlsx + photos/<Full Name>.jpg
-https://stitchexhibition.com/_s/status      # headcount and names, as JSON
-
-# remove one person on request: find their records, then delete each record and its photo
-docker exec stitch-exhibition-submissions-1 grep -l '"name": "Full Name"' /data/*.json
-docker exec stitch-exhibition-submissions-1 rm /data/<id>.json /data/<id>.jpg
+```
+ browser ──1. POST /_s/start (details, Turnstile, file sizes)──▶ submissions
+         ◀──── presigned part URLs, valid 24 h ────────────────
+ browser ──2. PUT each 16 MB part, 4 at a time, retried ──────▶ R2 bucket stitch-uploads
+ browser ──3. POST /_s/complete (the parts' ETags) ───────────▶ submissions
+                                     checks size + first bytes in R2 ──▶ "uploaded"
+ submissions ◀──4. transfer worker, 2 files at a time ──────── R2  ──▶ "stored"
 ```
 
-With no `SUBMISSIONS_KEY`, the form still takes submissions and the download
-answers 404. Five wrong passwords in a minute lock that address out for the rest
+The files never pass through nginx, through Cloudflare's 100 MB limit on a
+request to stitchexhibition.com, or up the home connection. A rush of 300
+people becomes a queue in R2 that the box drains at its own pace (R2 to the
+box measured 368 Mbit/s; a 1 GB booklet comes down in about 25 s). Every
+submission is a JSON record on the `submissions-data` volume, so a restart
+picks the queue up where it stopped.
+
+- **Files:** headshot JPG, PNG or WebP up to 20 MB; poster PDF up to 300 MB,
+  or JPG or PNG up to 60 MB; booklet PDF up to 1 GB. Types are checked twice:
+  as declared at start, and by each file's real first bytes in R2 at complete.
+  Image metadata (location, camera) is removed before anything is kept. HEIC is
+  refused; iPhones convert to JPEG by themselves for this form.
+- **Where it lands:** records and headshots on `submissions-data` (backed up
+  nightly by `nch-backup-all`); posters and booklets on `submissions-files`.
+  Every object stays in R2 as well, as the off-box copy of the big files, until
+  the deletion date.
+- **Limits:** 120 starts or completes a minute per address (a class on campus
+  Wi-Fi shares one); 600 uploads open at once; 50 GB always kept free on the
+  disk, after counting what open uploads have promised. Above any of them the
+  form asks people to try again in a few minutes.
+- **Bot check:** Cloudflare Turnstile, widget **STITCH exhibition form**.
+- **Unfinished uploads:** given up after 24 hours, and their parts aborted in R2.
+- **Deletion:** after 31 January 2027 the service empties both volumes and the
+  R2 bucket, and the form closes, as the notice on the form promises. The
+  bucket's lifecycle rule deletes everything on 1 February 2027 as well. To move
+  the date, change `DELETE_AFTER` and `CONSENT` in `server.mjs`, the notice in
+  `index.html` and the bucket rule, together.
+- **Configuration** (all in `.env`; compose will not start without them):
+  `SUBMISSIONS_KEY`, `TURNSTILE_SECRET`, `R2_ENDPOINT`, `R2_BUCKET`,
+  `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. The R2 key can reach the
+  `stitch-uploads` bucket and nothing else.
+
+```bash
+# the committee's downloads, from anywhere (any username, the key as password)
+https://stitchexhibition.com/_s/export            # submissions.xlsx + photos/<Full Name>.jpg
+https://stitchexhibition.com/_s/export/posters    # posters/<Full Name>.pdf   (large)
+https://stitchexhibition.com/_s/export/booklets   # booklets/<Full Name>.pdf  (very large)
+https://stitchexhibition.com/_s/status            # headcount, the queue, anything flagged
+
+# the queue, from the box
+docker logs stitch-exhibition-submissions-1 --since 1h | grep -E 'start|complete|transfer'
+
+# remove one person on request: find their records, then delete their files here and in R2
+docker exec stitch-exhibition-submissions-1 grep -l '"name": "Full Name"' /data/*.json
+docker exec stitch-exhibition-submissions-1 sh -c 'rm /data/<id>.* /files/<id>.*'
+#   ...and the three objects under submissions/<id>/ in the stitch-uploads bucket
+#   (Cloudflare dashboard → R2 → stitch-uploads)
+```
+
+The exports take each person's latest *stored* submission. Someone whose newest
+entry is still coming down from R2 appears with their previous one, and in
+`stillComingDown` in `/_s/status`. With no `SUBMISSIONS_KEY`, the downloads
+answer 404. Five wrong passwords in a minute lock that address out for the rest
 of the minute. If the service is down, the page is unaffected and the form says
 it could not send.
+
+**Exports are served from this box, so they go up the home connection** (about
+44 Mbit/s measured): the sheet and headshots take seconds, but tens of GB of
+booklets take hours. Start the booklets download well before it is needed.
 
 ## Rebuilding the tunnel from nothing
 
