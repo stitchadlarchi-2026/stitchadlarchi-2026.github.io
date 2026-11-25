@@ -44,7 +44,7 @@ orientation. An image it cannot parse is kept out of the download and flagged in
 never stored with its metadata. PDFs are stored as sent. Files get generated names, live
 outside the web root, and leave the box only inside the committee's zips.
 
-**The Student Directory (proposed 2026-11-26).** A second tick box, separate from the
+**The Student Directory (since 2026-11-26).** A second tick box, separate from the
 consent, asks to be shown on the site's Student Directory (menu → Directory). Only then does
 the browser make small JPEG web copies of the headshot (1200 px) and of an image poster
 (2400 px) and upload them beside the originals, through the same `/start`, R2 and transfer
@@ -58,6 +58,9 @@ files are never public. A resubmission waits for approval while the earlier appr
 stays up; a resubmission without the tick takes the profile down at once. The review page's
 approve and hide buttons accept only same-origin requests, because a browser sends its saved
 Basic password with any request to the site. Public reads: **600 a minute** per address.
+Public image addresses end in their extension, so Cloudflare caches them at the edge for at
+most **5 minutes** (`max-age=300`): the home connection serves each image about once per
+edge per five minutes, and a hidden profile's images stop being served within five minutes.
 The directory empties with everything else on the deletion date.
 
 **Rate limits and capacity, with numbers.** `/start` and `/complete`: **120 a minute** per
@@ -123,7 +126,7 @@ keeps every object until the deletion date.
   files upload to Cloudflare's storage service and that copies are held by Cloudflare.
 - **The `/start` budget can be spent by one campus address.** 120 a minute per address is
   shared by everyone behind that address. The browser retries a 429 after 20 s, three times.
-- **Presigned GETs for PDF posters in the directory (proposed 2026-11-26).** The service's
+- **Presigned GETs for PDF posters in the directory (2026-11-26).** The service's
   key signs a GET for one object for 15 minutes; anyone holding that URL in that window can
   read that poster. Accepted: it is only ever signed for an approved, opted-in profile's
   poster, which the person asked to publish.

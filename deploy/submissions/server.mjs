@@ -305,6 +305,7 @@ function readJson(req, max = 64 * 1024) {
 const saving = new Map();
 function save(r) {
   records.set(r.id, r);
+  profilesCache = null;
   const turn = (saving.get(r.id) ?? Promise.resolve()).then(async () => {
     const { tokenHash, ...rest } = r;
     const body = JSON.stringify({ ...rest, tokenHash: tokenHash ? Buffer.from(tokenHash).toString('hex') : undefined }, null, 2);
@@ -336,6 +337,7 @@ async function load() {
   for (const f of await readdir(FILES)) if (f.startsWith('.')) await rm(join(FILES, f), { force: true });
   try {
     approvals = JSON.parse(await readFile(APPROVALS(), 'utf8'));
+    profilesCache = null;
   } catch {
     approvals = {};
   }
@@ -716,6 +718,7 @@ async function purgeIfDue() {
   }
   records.clear();
   approvals = {};
+  profilesCache = null;
   // In parallel: the R2 client holds them to its own limit of calls in flight.
   if (r2) await Promise.all((await r2.list('')).map((key) => r2.delete(key).then(() => (n += 1))));
   if (n) console.log(`retention: deleted ${n} files and objects (past ${DELETE_AFTER.toISOString()})`);
@@ -729,7 +732,18 @@ async function purgeIfDue() {
  * the latest one they listed that the committee approved, unless their latest
  * submission says no or the committee hid it.
  */
+/**
+ * The directory, computed once and kept until a record or a decision changes.
+ * Every public request needs it (each image checks its profile is shown), so
+ * rebuilding it per request would spend the container's CPU on a crowd.
+ */
+let profilesCache = null;
 function profiles() {
+  if (!profilesCache) profilesCache = buildProfiles();
+  return profilesCache;
+}
+
+function buildProfiles() {
   const byName = new Map();
   for (const r of all()) {
     if (r.state !== 'stored') continue;
@@ -747,7 +761,7 @@ function profiles() {
     if (p.latest.listed && mark !== 'hidden') {
       for (let i = p.history.length - 1; i >= 0; i--) {
         const r = p.history[i];
-        if (r.listed && approvals[r.id] === 'approved' && usable(r.files.photoWeb ?? r.files.photo)) {
+        if (r.listed && approvals[r.id] === 'approved' && (usable(r.files.photoWeb) || usable(r.files.photo))) {
           p.shown = r;
           break;
         }
@@ -775,7 +789,7 @@ function directory() {
     used.add(slug);
     const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : 'photo';
     let poster = null;
-    if (usable(r.files.posterWeb)) poster = { kind: 'image', url: `/_s/media/${r.id}/posterWeb` };
+    if (usable(r.files.posterWeb)) poster = { kind: 'image', url: mediaUrl(r, 'posterWeb') };
     else if (r.files.poster?.ext === 'pdf' && r.files.poster.stored) poster = { kind: 'pdf', url: `/_s/poster/${r.id}` };
     out.push({
       slug,
@@ -784,12 +798,26 @@ function directory() {
       title: r.title ?? '',
       overview: r.overview,
       linkedin: r.linkedin,
-      photo: `/_s/media/${r.id}/${photoKind}`,
+      photo: mediaUrl(r, photoKind),
       poster,
     });
   }
   return out;
 }
+
+/**
+ * A public image's address ends in its file's extension. Cloudflare caches by
+ * extension, so the edge serves the directory's images and they do not go up
+ * the home connection once per visitor; a crowd at the opening on one venue
+ * Wi-Fi would otherwise also meet the per-address limit below.
+ */
+const mediaUrl = (r, kind) => `/_s/media/${r.id}/${kind}.${r.files[kind].ext}`;
+/**
+ * How long a browser or Cloudflare may keep a public image. Short, because a
+ * profile the committee hides must disappear: at most this long after it does.
+ */
+const PUBLIC_IMAGE_CACHE = 'public, max-age=300';
+const gone = (res) => res.writeHead(404, { 'cache-control': 'no-store' }).end();
 
 /** The record behind a public request, only if the directory shows it. */
 function shownRecord(id) {
@@ -807,26 +835,34 @@ async function sendFile(res, kind, f, cache) {
   await pipeline(createReadStream(join(KINDS[kind].dir, f.file)), res);
 }
 
+/** The directory as sent, rebuilt only when profiles() is. */
+const directoryJson = { for: null, body: '' };
+
 /** GET /directory.json, /media/<id>/<kind>, /poster/<id>: approved profiles only. */
 async function publicGet(req, res, path) {
   if (!publicAllowed(req)) return json(res, 429, { error: 'Too many requests. Please wait a minute.' });
   if (path === '/directory.json') {
+    const current = profiles();
+    if (directoryJson.for !== current) {
+      directoryJson.body = JSON.stringify({ graduates: directory() });
+      directoryJson.for = current;
+    }
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' });
-    return res.end(JSON.stringify({ graduates: directory() }));
+    return res.end(directoryJson.body);
   }
-  const media = /^\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)$/.exec(path);
+  const media = /^\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)\.(jpg|png|webp)$/.exec(path);
   if (media) {
     const r = shownRecord(media[1]);
     const f = r?.files[media[2]];
     // The original headshot only stands in when the browser could not make a web copy.
-    if (!r || !usable(f) || (media[2] === 'photo' && usable(r.files.photoWeb))) return res.writeHead(404).end();
-    return sendFile(res, media[2], f, 'public, max-age=86400');
+    if (!r || !usable(f) || f.ext !== media[3] || (media[2] === 'photo' && usable(r.files.photoWeb))) return gone(res);
+    return sendFile(res, media[2], f, PUBLIC_IMAGE_CACHE);
   }
   const poster = /^\/poster\/([0-9a-f-]{1,64})$/.exec(path);
   if (poster) {
     const r = shownRecord(poster[1]);
     const f = r?.files.poster;
-    if (!r || f?.ext !== 'pdf' || !f.stored) return res.writeHead(404).end();
+    if (!r || f?.ext !== 'pdf' || !f.stored) return gone(res);
     // A poster PDF runs to hundreds of MB: hand the reader a short-lived R2 link
     // rather than stream it up the home connection. Without R2, stream it.
     if (r2) {
@@ -836,7 +872,7 @@ async function publicGet(req, res, path) {
     }
     return sendFile(res, 'poster', f, 'no-store');
   }
-  return res.writeHead(404).end();
+  return gone(res);
 }
 
 // ---------------------------------------------------------------- review
@@ -845,7 +881,8 @@ const STATUS_WORD = { live: 'Live', waiting: 'Waiting for review', hidden: 'Hidd
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 async function reviewPage(res) {
-  const list = profiles();
+  const list = [...profiles()]; // a copy: profiles() is shared, and this sorts it
+
   const order = { waiting: 0, live: 1, hidden: 2, private: 3 };
   list.sort((a, b) => order[a.status] - order[b.status] || a.latest.name.localeCompare(b.latest.name, 'en-AU'));
   const counts = { waiting: 0, live: 0, hidden: 0, private: 0 };
@@ -853,7 +890,8 @@ async function reviewPage(res) {
   const cards = list
     .map((p) => {
       const r = p.latest;
-      const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : usable(r.files.photo) ? 'photo' : null;
+      // Someone who did not opt in has nothing to review, so their full-size original is not loaded.
+      const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : p.status !== 'private' && usable(r.files.photo) ? 'photo' : null;
       const posterKind = usable(r.files.posterWeb) ? 'posterWeb' : null;
       const poster = posterKind
         ? `<a href="/_s/review/media/${r.id}/${posterKind}" target="_blank" rel="noopener">View poster</a>`
@@ -929,6 +967,7 @@ async function decide(req, res, id, action) {
   const r = records.get(id);
   if (!r || r.state !== 'stored') return res.writeHead(404).end();
   approvals[id] = action === 'approve' ? 'approved' : 'hidden';
+  profilesCache = null;
   const tmp = join(DATA, `.approvals.${randomBytes(4).toString('hex')}`);
   await writeFile(tmp, JSON.stringify(approvals, null, 2));
   await rename(tmp, APPROVALS());

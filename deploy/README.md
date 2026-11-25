@@ -163,7 +163,8 @@ is public until the committee approves it at `https://stitchexhibition.com/_s/re
 (same password as the downloads). The page lists everyone as waiting, live,
 hidden or not in the directory, with Approve and Hide; decisions go to
 `/data/approvals.state`. The Directory page reads `/_s/directory.json`, the
-images come from `/_s/media/<id>/<kind>`, and a PDF poster from `/_s/poster/<id>`,
+images come from `/_s/media/<id>/<kind>.<ext>` (Cloudflare caches them for up to five
+minutes, so a hidden profile's images are gone within five minutes), and a PDF poster from `/_s/poster/<id>`,
 which redirects to a 15-minute presigned R2 link so it never goes up the home
 connection. The sheet has "Asked for directory" and "Directory" columns.
 

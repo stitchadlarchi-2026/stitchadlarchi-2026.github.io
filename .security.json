@@ -20,5 +20,5 @@
   "skill": "cybersecurity",
   "storage": "server volumes submissions-data and submissions-files; R2 bucket stitch-uploads (NCH account) until the deletion date",
   "updated": "2026-11-26",
-  "public_routes": ["/_s/directory.json", "/_s/media/<id>/<kind>", "/_s/poster/<id> (302 to a 15-minute presigned R2 GET)"]
+  "public_routes": ["/_s/directory.json", "/_s/media/<id>/<kind>.<ext> (edge-cached 5 min)", "/_s/poster/<id> (302 to a 15-minute presigned R2 GET)"]
 }
