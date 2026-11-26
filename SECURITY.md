@@ -42,33 +42,36 @@ one method, one object, one part number and one exact `Content-Length`, and expi
 24 hours. R2 refuses a part of any other length. Lifecycle: unfinished multipart uploads are
 aborted after 1 day; every object is deleted on 2027-02-01.
 
-**Uploads (since 2026-11-26, STITCH-2).** Two files. The headshot is cropped in the browser
+**Uploads (since 2026-11-26, STITCH-2).** A headshot and up to three project images. The headshot is cropped in the browser
 to a **600 x 800** JPEG tile and turned black and white there; only the tile is uploaded, up to
-**4 MB**, and `/complete` refuses any JPEG that is not exactly 600 x 800. The poster is **PNG
-only**, up to **250 MB**, and at least **3508 x 4967 pixels** either way up (A1 at 150 DPI);
-the browser reads the size from the PNG header before it uploads, and `/complete` reads it
-again from the object in R2. A DPI number in the file is not trusted. Each file's type is
+**4 MB**, and `/complete` refuses any JPEG that is not exactly 600 x 800. The project images
+(optional, up to three: a poster, drawings, renders, anything) are **PNG only**, up to **250 MB**
+each, at **150 DPI or more** as recorded in the PNG's `pHYs` chunk; a PNG with no DPI recorded
+is refused. No pixel size is set, because an image may be anything. The browser reads the DPI
+before it uploads, and `/complete` reads it again from the object in R2 (the first 64 KB, or
+4 MB if a large colour profile or XMP block puts `pHYs` further in). The DPI is the file's own
+claim: it is the committee's rule for print quality, not a security control. Each file's type is
 checked as declared at `/start`, and again by its real first bytes in R2 at `/complete`; a
-mismatch, or a poster too small, closes the submission and removes its objects from R2 at
+mismatch, or an image under 150 DPI, closes the submission and removes its objects from R2 at
 once. The browser decodes any JPEG, PNG or WebP headshot itself, so HEIC never reaches the
 service. `metadata.mjs` removes EXIF (GPS, device, time), XMP, IPTC and comments from
 every image before it is kept, leaving the pixels, the ICC colour profile and the JPEG
 orientation. An image it cannot parse is kept out of the download and flagged in the sheet,
-never stored with its metadata. The poster is stripped as it streams down from R2, so a
+never stored with its metadata. Each project image is stripped as it streams down from R2, so a
 250 MB PNG never sits in the service's memory (a 200 MB poster peaked the service at 119 MB).
 Files get generated names, live outside the web root, and leave the box only inside the
 committee's zips. There is no booklet.
 
 **The Student Directory (since 2026-11-26).** A yes or no question, separate from the
 consent, asks to be shown on the site's Student Directory (menu → Directory). Only on a yes
-does the browser make a small JPEG web copy of the poster (2400 px) and upload it beside the
-PNG, through the same `/start`, R2 and transfer path, metadata stripped like any image. The
+does the browser make a small JPEG web copy of each project image (2400 px) and upload it
+beside its PNG (`posterWeb`, `posterWeb2`, `posterWeb3`), through the same `/start`, R2 and transfer path, metadata stripped like any image. The
 headshot tile is already small and is served as it is. Nothing is public until the committee approves it at
 `/_s/review` (behind `SUBMISSIONS_KEY`); approvals are kept in `approvals.state` on
 `submissions-data`. The public routes are `/_s/directory.json` and `/_s/media/<id>/<kind>.jpg`, and they
 serve only approved, opted-in profiles: name, degree, LinkedIn, Instagram, website, project
-title, overview, the headshot tile and the poster's web copy. Email, place of origin, the
-exhibit answer and the poster PNG are never public. Every public link is an `https` address:
+title, overview, the headshot tile and the images' web copies. Email, place of origin, the
+exhibit answer and the image PNGs are never public. Every public link is an `https` address:
 the service refuses any other scheme, and the page checks again before it makes a link. A resubmission waits for approval while the earlier approved profile
 stays up; a resubmission that answers no takes the profile down at once. The review page's
 approve and hide buttons accept only same-origin requests, because a browser sends its saved
@@ -137,14 +140,15 @@ keeps every object until the deletion date.
   records and headshots. Accepted: the files are the graduates' own work, which they still
   hold, and they can be asked to send them again.
 - **Uploads land in a Cloudflare bucket first.** The location hint is Oceania, which is a
-  hint, not a guarantee of where Cloudflare stores the bytes. The collection notice says the
-  files upload to Cloudflare's storage service and that copies are held by Cloudflare.
+  hint, not a guarantee of where Cloudflare stores the bytes. Since 2026-11-26 the collection
+  notice on the form no longer mentions Cloudflare, the server in Australia or the deletion
+  date (the committee asked for the shorter notice). Those facts are recorded here only.
 - **The `/start` budget can be spent by one campus address.** 120 a minute per address is
   shared by everyone behind that address. The browser retries a 429 after 20 s, three times.
-- **A browser without the poster's web copy.** A phone may run out of memory decoding a
+- **A browser without an image's web copy.** A phone may run out of memory decoding a
   200 MB PNG to make the 2400 px copy. The form then sends none, and that profile shows no
-  poster in the directory; the committee sees "no web copy" on the review page and has the
-  PNG in the poster download.
+  copy of that image in the directory; the committee sees "no web copy" on the review page and
+  has the PNG in the images download (`/_s/export/posters`).
 
 ## Lane A record (2026-09-29 to 2026-11-25)
 
