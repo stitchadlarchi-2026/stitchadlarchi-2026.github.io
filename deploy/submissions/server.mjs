@@ -1150,11 +1150,16 @@ function adelaideTime(iso) {
 function named(people) {
   const used = new Set();
   return people.map((p) => {
-    let base = fileSafe(p.name);
-    for (let n = 2; used.has(base.toLowerCase()); n++) base = `${fileSafe(p.name)} ${n}`;
-    used.add(base.toLowerCase());
+    // Every name this person's files would take, so "Jane Citizen 2" (a second
+    // Jane) never collides with Jane's second image.
+    const take = (base) => Object.entries(p.files).map(([kind, f]) => [kind, `${base}${KINDS[kind]?.suffix ?? ''}.${f.ext}`]);
+    let names = take(fileSafe(p.name));
+    for (let n = 2; names.some(([, x]) => used.has(x.toLowerCase())); n++) names = take(`${fileSafe(p.name)} (${n})`);
     const out = {};
-    for (const [kind, f] of Object.entries(p.files)) out[kind] = f.problem ? null : `${base}${KINDS[kind]?.suffix ?? ''}.${f.ext}`;
+    for (const [kind, x] of names) {
+      used.add(x.toLowerCase());
+      out[kind] = p.files[kind].problem ? null : x;
+    }
     return { p, out };
   });
 }
