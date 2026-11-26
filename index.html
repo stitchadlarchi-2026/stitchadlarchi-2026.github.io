@@ -229,7 +229,7 @@
     gap: clamp(28px, 4vw, 56px) clamp(16px, 2.2vw, 32px);
   }
   .grads .gcard { display: grid; gap: .3em; color: var(--ink); text-decoration: none; font-size: .82em; }
-  .grads .gcard img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 50% 20%; background: #eee; margin-bottom: .75em; transition: opacity .2s ease; }
+  .grads .gcard img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 50%; background: #eee; margin-bottom: .75em; transition: opacity .2s ease; }
   .grads .gcard:hover img { opacity: .85; }
   .grads .gcard:hover .gc-name { color: var(--red); }
   .grads .gcard:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
@@ -245,7 +245,7 @@
   .grads .gback:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .grads .gprof { outline: none; }
   .grads .gtop { display: grid; grid-template-columns: minmax(0, clamp(200px, 26vw, 380px)) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
-  .grads .gphoto { width: 100%; aspect-ratio: 1 / 1; object-position: 50% 20%; object-fit: cover; background: #f1f1f1; display: block; }
+  .grads .gphoto { width: 100%; aspect-ratio: 3 / 4; object-position: 50% 50%; object-fit: cover; background: #f1f1f1; display: block; }
   .grads .ginfo { display: grid; gap: 1em; justify-items: start; max-width: 38em; }
   .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
   .grads .gfrom { margin: -.4em 0 0; color: #888; }
@@ -302,7 +302,7 @@
   .lnks .xform select:invalid { color: #aaa; }
   .lnks .xform select option { color: var(--ink); }
   .lnks .xcredit { margin-top: -.4em; }
-  .lnks .xform input[type="text"], .lnks .xform input[type="url"], .lnks .xform textarea {
+  .lnks .xform input[type="text"], .lnks .xform input[type="url"], .lnks .xform input[type="email"], .lnks .xform textarea {
     font: inherit; text-transform: none; letter-spacing: 0; color: var(--ink);
     background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
     padding: .45em 0; width: 100%; outline: none;
@@ -348,6 +348,34 @@
   .lnks .xdone p { margin: 0; text-transform: none; letter-spacing: 0; line-height: 1.5; }
   .lnks .xdone .xdone-title { text-transform: uppercase; letter-spacing: .03em; color: var(--red); }
   .lnks .xdone li span { white-space: nowrap; }
+  .lnks .xask { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .lnks .xask legend { padding: 0; margin-bottom: .45em; line-height: 1.45; }
+  .lnks .xchoices { display: flex; gap: 2em; }
+  .lnks .xask[aria-invalid="true"] .xchoices { outline: 1px solid var(--red); outline-offset: 4px; }
+  .lnks .xask a, .lnks .xfield .xhint a { color: inherit; text-underline-offset: 3px; }
+  .lnks .xnote { margin: -.4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.5; border-left: 2px solid var(--red); padding-left: .8em; }
+  .lnks .xmore { display: grid; gap: 1.6em; }
+  .lnks .xmore[hidden] { display: none; }
+  .lnks .xtile { display: flex; gap: 1.2em; align-items: flex-end; }
+  .lnks .xtile[hidden] { display: none; }
+  .lnks .xtile img { width: 120px; aspect-ratio: 3 / 4; display: block; background: #eee; }
+  .lnks .xcrop {
+    border: 0; border-radius: 0; padding: clamp(16px, 3vw, 28px); max-width: min(94vw, 460px); width: 100%; margin: auto;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: .03em; color: var(--ink); background: var(--white);
+  }
+  .lnks .xcrop[open] { display: grid; gap: .9em; justify-items: start; }
+  .lnks .xcrop::backdrop { background: rgba(0, 0, 0, .7); }
+  .lnks .xcrop p { margin: 0; }
+  .lnks .xcrop canvas {
+    width: min(100%, 300px, calc((100dvh - 260px) * .75)); aspect-ratio: 3 / 4; height: auto; justify-self: center;
+    filter: grayscale(1); background: #eee; cursor: grab; touch-action: none; outline: none;
+  }
+  .lnks .xcrop canvas:active { cursor: grabbing; }
+  .lnks .xcrop canvas:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
+  .lnks .xzoom { display: flex; gap: .8em; align-items: center; width: 100%; font-size: .85em; }
+  .lnks .xzoom input { flex: 1; accent-color: var(--red); }
+  .lnks .xcrop-actions { display: flex; gap: 1.4em; align-items: center; flex-wrap: wrap; }
+  .lnks .xcrop-actions .xsubmit { margin-top: 0; }
   @media (max-width: 700px) { .lnks .xform-wrap { padding-left: 0; } }
 
   /* ---------- sponsors page: one list, split by tier, logos in left-aligned rows ---------- */
@@ -526,12 +554,7 @@
       <div class="xdrop-body" id="xhbBody" inert>
         <div>
           <div class="xform-wrap">
-            <p class="xstep"><span class="xnum">01</span> Choose your headshot from the portrait gallery and download the one you like.</p>
-            <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
-              <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
-            </a>
-            <p class="xhint xcredit">Portraits by Charlie Conybeare.</p>
-            <p class="xstep"><span class="xnum">02</span> Fill in your details and upload three files: the headshot you chose, your project poster, and your project booklet.</p>
+            <p class="xstep">Tell us who you are and whether you’d like to exhibit on the night and be in the Student Directory. If you say yes to either, we ask for your project details, a headshot and your poster.</p>
 
             <form class="xform" id="xForm" novalidate>
               <div class="xfield">
@@ -541,85 +564,120 @@
                 <p class="xerr" id="xNameErr" aria-live="polite"></p>
               </div>
               <div class="xfield">
-                <label for="xDegree">Degree <span class="req" aria-hidden="true">*</span></label>
-                <select id="xDegree" name="degree" required aria-describedby="xDegreeErr">
-                  <option value="" selected disabled>Choose your degree</option>
-                  <option>Bachelor of Architectural Design</option>
-                  <option>Bachelor of Architectural Design majoring in Urban Planning</option>
-                  <option>Bachelor of Interior Architecture (Honours)</option>
-                  <option>Master of Architecture</option>
-                  <option>Master of Landscape Architecture</option>
-                  <option>Master of Architecture, Master of Landscape Architecture</option>
-                  <option>Master of Urban and Regional Planning</option>
-                  <option value="other">Other</option>
-                </select>
-                <input id="xDegreeOther" name="degree_other" type="text" maxlength="120" placeholder="Write your degree" hidden aria-label="Your degree">
-                <p class="xerr" id="xDegreeErr" aria-live="polite"></p>
+                <label for="xEmail">Personal email <span class="req" aria-hidden="true">*</span></label>
+                <input id="xEmail" name="email" type="email" inputmode="email" autocomplete="email" required maxlength="254" aria-describedby="xEmailHint xEmailErr">
+                <p class="xhint" id="xEmailHint">So the committee can contact you if there is a problem with your entry. It is never shown on the site.</p>
+                <p class="xerr" id="xEmailErr" aria-live="polite"></p>
               </div>
-              <div class="xfield">
-                <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
-                <input id="xLinkedin" name="linkedin" type="url" inputmode="url" autocomplete="url" maxlength="300" placeholder="linkedin.com/in/your-name" aria-describedby="xLinkedinErr">
-                <p class="xerr" id="xLinkedinErr" aria-live="polite"></p>
+              <fieldset class="xfield xask" id="xExhibit" aria-describedby="xExhibitErr">
+                <legend class="xlabel">Would you like to exhibit on the night? <span class="req" aria-hidden="true">*</span></legend>
+                <div class="xchoices">
+                  <label class="xcheck"><input type="radio" name="exhibit" value="yes"><span>Yes</span></label>
+                  <label class="xcheck"><input type="radio" name="exhibit" value="no"><span>No</span></label>
+                </div>
+                <p class="xerr" id="xExhibitErr" aria-live="polite"></p>
+              </fieldset>
+              <fieldset class="xfield xask" id="xDirectory" aria-describedby="xDirectoryHint xDirectoryErr">
+                <legend class="xlabel">Would you like to be included in the Student Directory? <span class="req" aria-hidden="true">*</span></legend>
+                <div class="xchoices">
+                  <label class="xcheck"><input type="radio" name="directory" value="yes"><span>Yes</span></label>
+                  <label class="xcheck"><input type="radio" name="directory" value="no"><span>No</span></label>
+                </div>
+                <p class="xhint" id="xDirectoryHint">Your headshot, name, degree, links, project title, overview and poster appear on this site’s <a href="#directory">Student Directory</a> once the committee has checked them.</p>
+                <p class="xerr" id="xDirectoryErr" aria-live="polite"></p>
+              </fieldset>
+              <p class="xnote" id="xDirOnly" hidden aria-live="polite">You’re not exhibiting, so your details go to the Student Directory only. They won’t appear in the exhibition itself.</p>
+              <p class="xnote" id="xNeither" hidden aria-live="polite">That’s all we need. Press Submit to let us know you won’t be exhibiting or joining the Student Directory. We keep only your name, email and answers, and delete them after 31 January 2027.</p>
+
+              <div class="xmore" id="xMore" hidden>
+                <div class="xfield">
+                  <label for="xDegree">Degree <span class="req" aria-hidden="true">*</span></label>
+                  <select id="xDegree" name="degree" required aria-describedby="xDegreeErr">
+                    <option value="" selected disabled>Choose your degree</option>
+                    <option>Bachelor of Architectural Design</option>
+                    <option>Bachelor of Architectural Design majoring in Urban Planning</option>
+                    <option>Bachelor of Interior Architecture (Honours)</option>
+                    <option>Master of Architecture</option>
+                    <option>Master of Landscape Architecture</option>
+                    <option>Master of Architecture, Master of Landscape Architecture</option>
+                    <option>Master of Urban and Regional Planning</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <input id="xDegreeOther" name="degree_other" type="text" maxlength="120" placeholder="Write your degree" hidden aria-label="Your degree">
+                  <p class="xerr" id="xDegreeErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xTitle">Project title <span class="req" aria-hidden="true">*</span></label>
+                  <input id="xTitle" name="title" type="text" required maxlength="150" aria-describedby="xTitleErr">
+                  <p class="xerr" id="xTitleErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
+                  <textarea id="xOverview" name="overview" rows="6" required maxlength="1500" aria-describedby="xOverviewHint xOverviewErr"></textarea>
+                  <p class="xhint" id="xOverviewHint">Up to 150 words. <span id="xCount">0 / 150</span></p>
+                  <p class="xerr" id="xOverviewErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <span class="xlabel" id="xPhotoLabel">Your headshot <span class="req" aria-hidden="true">*</span></span>
+                  <p class="xhint">Choose one from the portrait gallery and download it, then add it here. It becomes a 600 × 800 black-and-white tile, and you can move and zoom it to fit.</p>
+                  <a class="ilink xgal" href="https://charlieconybeare.pixieset.com/adelaideuniversityarchitectureportraits26/" target="_blank" rel="noopener" aria-label="Portrait gallery (opens in a new tab)">
+                    <span class="sq" aria-hidden="true"></span><span>PORTRAIT GALLERY</span>
+                  </a>
+                  <p class="xhint xcredit">Portraits by Charlie Conybeare.</p>
+                  <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="sr-only xfilein" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
+                  <label for="xPhoto" class="xfile">[ Choose photo ]</label>
+                  <div class="xtile" id="xTile" hidden>
+                    <img id="xTileImg" alt="Your headshot tile, as it will appear">
+                    <button type="button" class="xfile" id="xRecrop">[ Adjust crop ]</button>
+                  </div>
+                  <p class="xhint" id="xPhotoName">JPG, PNG or WebP, at least 600 × 800 pixels.</p>
+                  <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <span class="xlabel" id="xPosterLabel">Your project poster <span class="req" aria-hidden="true">*</span></span>
+                  <input id="xPoster" name="poster" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel" aria-describedby="xPosterHint xPosterName xPosterErr">
+                  <label for="xPoster" class="xfile">[ Choose poster ]</label>
+                  <p class="xhint" id="xPosterHint">Export your poster as a PNG at A1 size and at least 150 DPI: at least 3508 × 4967 pixels, portrait or landscape. Up to 250 MB.</p>
+                  <p class="xhint" id="xPosterName"></p>
+                  <p class="xerr" id="xPosterErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
+                  <input id="xLinkedin" name="linkedin" type="url" inputmode="url" maxlength="300" placeholder="linkedin.com/in/your-name" aria-describedby="xLinkedinErr">
+                  <p class="xerr" id="xLinkedinErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xInstagram">Instagram <span class="opt">(optional)</span></label>
+                  <input id="xInstagram" name="instagram" type="text" maxlength="300" placeholder="@your.handle" autocapitalize="off" spellcheck="false" aria-describedby="xInstagramErr">
+                  <p class="xerr" id="xInstagramErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xSite">Website or portfolio <span class="opt">(optional)</span></label>
+                  <input id="xSite" name="site" type="url" inputmode="url" autocomplete="url" maxlength="300" placeholder="yourportfolio.com" aria-describedby="xSiteErr">
+                  <p class="xerr" id="xSiteErr" aria-live="polite"></p>
+                </div>
+                <div class="xfield">
+                  <label for="xFrom">Where you’re from <span class="opt">(optional)</span></label>
+                  <input id="xFrom" name="from" type="text" maxlength="120" aria-describedby="xFromHint">
+                  <p class="xhint" id="xFromHint">A place, such as a town, city or country. Not your ethnicity.</p>
+                </div>
+                <div class="xfield xnotice" id="xNotice">
+                  <p class="xlabel">How we use your details</p>
+                  <p class="xhint">The STITCH committee collects your name, personal email, your answers, degree, headshot, project title and overview, and poster, and your LinkedIn, Instagram, website and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue if you exhibit, on stitchexhibition.com, and on STITCH’s social media. Your email is only for the committee to contact you, and is never published.</p>
+                  <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a> or message us on <a href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener">Instagram</a>.</p>
+                  <label class="xcheck" for="xConsent">
+                    <input id="xConsent" name="consent" type="checkbox" value="yes" aria-describedby="xNotice xConsentErr">
+                    <span>I agree to STITCH using my details as described above. <span class="req" aria-hidden="true">*</span></span>
+                  </label>
+                  <p class="xerr" id="xConsentErr" aria-live="polite"></p>
+                </div>
               </div>
-              <div class="xfield">
-                <label for="xFrom">Where you’re from <span class="opt">(optional)</span></label>
-                <input id="xFrom" name="from" type="text" maxlength="120" aria-describedby="xFromHint">
-                <p class="xhint" id="xFromHint">A place, such as a town, city or country. Not your ethnicity.</p>
-              </div>
-              <div class="xfield">
-                <label for="xTitle">Project title <span class="req" aria-hidden="true">*</span></label>
-                <input id="xTitle" name="title" type="text" required maxlength="150" aria-describedby="xTitleErr">
-                <p class="xerr" id="xTitleErr" aria-live="polite"></p>
-              </div>
-              <div class="xfield">
-                <label for="xOverview">Project overview <span class="req" aria-hidden="true">*</span></label>
-                <textarea id="xOverview" name="overview" rows="6" required maxlength="1500" aria-describedby="xOverviewHint xOverviewErr"></textarea>
-                <p class="xhint" id="xOverviewHint">Up to 150 words. <span id="xCount">0 / 150</span></p>
-                <p class="xerr" id="xOverviewErr" aria-live="polite"></p>
-              </div>
-              <div class="xfield">
-                <span class="xlabel" id="xPhotoLabel">Your headshot <span class="req" aria-hidden="true">*</span></span>
-                <input id="xPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="sr-only xfilein" aria-labelledby="xPhotoLabel" aria-describedby="xPhotoName xPhotoErr">
-                <label for="xPhoto" class="xfile">[ Choose photo ]</label>
-                <p class="xhint" id="xPhotoName">JPG, PNG or WebP, up to 20 MB. iPhone photos are converted for you.</p>
-                <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
-              </div>
-              <div class="xfield">
-                <span class="xlabel" id="xPosterLabel">Your project poster <span class="req" aria-hidden="true">*</span></span>
-                <input id="xPoster" name="poster" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required class="sr-only xfilein" aria-labelledby="xPosterLabel" aria-describedby="xPosterName xPosterErr">
-                <label for="xPoster" class="xfile">[ Choose poster ]</label>
-                <p class="xhint" id="xPosterName">PDF up to 300 MB, or JPG or PNG up to 60 MB.</p>
-                <p class="xerr" id="xPosterErr" aria-live="polite"></p>
-              </div>
-              <div class="xfield">
-                <span class="xlabel" id="xBookletLabel">Your project booklet <span class="req" aria-hidden="true">*</span></span>
-                <input id="xBooklet" name="booklet" type="file" accept="application/pdf,.pdf" required class="sr-only xfilein" aria-labelledby="xBookletLabel" aria-describedby="xBookletName xBookletErr">
-                <label for="xBooklet" class="xfile">[ Choose booklet ]</label>
-                <p class="xhint" id="xBookletName">PDF up to 1 GB. A big file can take a while: keep this page open until it says it is done.</p>
-                <p class="xerr" id="xBookletErr" aria-live="polite"></p>
-              </div>
+
               <div class="xtrap" aria-hidden="true">
-                <label for="xWebsite">Leave this empty</label>
-                <input id="xWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+                <label for="xRef">Leave this empty</label>
+                <input id="xRef" name="ref_code" type="text" tabindex="-1" autocomplete="off">
               </div>
-              <div class="xfield xlist">
-                <label class="xcheck" for="xDirectory">
-                  <input id="xDirectory" name="directory" type="checkbox" value="yes" aria-describedby="xDirectoryHint">
-                  <span>Show my profile in the Student Directory</span>
-                </label>
-                <p class="xhint" id="xDirectoryHint">Your headshot, name, degree, LinkedIn, project title, overview and poster appear on this site’s Student Directory once the committee has checked them. Leave this unticked to stay out of it.</p>
-              </div>
-              <div class="xfield xnotice" id="xNotice">
-                <p class="xlabel">How we use your details</p>
-                <p class="xhint">The STITCH committee collects your name, degree, headshot, project title and overview, poster and booklet, and your LinkedIn and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue, on stitchexhibition.com, and on STITCH’s social media.</p>
-                <p class="xhint">Your files upload to Cloudflare’s storage service, and your details and files are kept on a server in Australia run for STITCH by NCH Consultancy, with copies held by Cloudflare. We remove location and camera data from your images. We delete the submissions themselves after 31 January 2027. To change or remove your entry, email <a href="mailto:stitch.adl.archi@gmail.com">stitch.adl.archi@gmail.com</a> or message us on <a href="https://www.instagram.com/annual.studio/" target="_blank" rel="noopener">Instagram</a>.</p>
-                <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
-                <label class="xcheck" for="xConsent">
-                  <input id="xConsent" name="consent" type="checkbox" value="yes" required aria-describedby="xNotice xConsentErr">
-                  <span>I agree to STITCH using my details as described above. <span class="req" aria-hidden="true">*</span></span>
-                </label>
-                <p class="xerr" id="xConsentErr" aria-live="polite"></p>
-              </div>
+              <p class="xhint">This form uses Cloudflare Turnstile to check that you are not a bot.</p>
               <div class="cf-turnstile" data-sitekey="0x4AAAAAAGR6oCousCtk41xY" data-theme="light"></div>
               <button type="submit" class="xsubmit" id="xSubmit">[ Submit ]</button>
               <div class="xprogress" id="xProgress" hidden>
@@ -629,10 +687,22 @@
               <p class="xstatus" id="xStatus" role="status" aria-live="polite"></p>
             </form>
 
+            <dialog class="xcrop" id="xCrop" aria-labelledby="xCropTitle" aria-describedby="xCropHelp">
+              <p class="xlabel" id="xCropTitle">Fit your headshot</p>
+              <p class="xhint" id="xCropHelp">Drag to move it. Zoom with the slider, a pinch, or the scroll wheel. Arrow keys move it, + and − zoom.</p>
+              <canvas id="xCropCanvas" width="600" height="800" tabindex="0" aria-label="Headshot crop preview. Arrow keys move the photo, plus and minus zoom."></canvas>
+              <label class="xzoom"><span>Zoom</span><input id="xCropZoom" type="range" min="0" max="100" value="0" step="1"></label>
+              <div class="xcrop-actions">
+                <button type="button" class="xsubmit" id="xCropOk">[ Use this crop ]</button>
+                <button type="button" class="xagain" id="xCropCancel">[ Cancel ]</button>
+              </div>
+            </dialog>
+
             <div class="xdone" id="xDone" hidden tabindex="-1">
               <p class="xdone-title">Thank you<span id="xDoneName"></span>.</p>
-              <p>We have your details and your files, saved as:</p>
+              <p id="xDoneSaved">We have your details and your files, saved as:</p>
               <ul id="xDoneFiles"></ul>
+              <p id="xDoneDeclined" hidden>We’ve noted that you won’t be exhibiting or joining the Student Directory.</p>
               <p id="xDoneListed" hidden>Your profile will appear in the <a href="#directory">Student Directory</a> once the committee has checked it.</p>
               <p class="xhint">Need to change something? Submit again: we use your latest entry.</p>
               <button type="button" class="xagain" id="xAgain">[ Submit another ]</button>
@@ -660,9 +730,10 @@
           <h2 class="gname" id="gpName"></h2>
           <p class="gfrom gdeg" id="gpDegree"></p>
           <a class="ilink" id="gpLinkedin" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>LinkedIn</span></a>
+          <a class="ilink" id="gpInstagram" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>Instagram</span></a>
+          <a class="ilink" id="gpWebsite" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>Website</span></a>
           <h3 class="gtitle" id="gpTitle"></h3>
           <p class="gov" id="gpOverview"></p>
-          <a class="ilink" id="gpPdf" target="_blank" rel="noopener" hidden><span class="sq" aria-hidden="true"></span><span>View poster (PDF)</span></a>
         </div>
       </div>
       <a class="gproj" id="gpProject" target="_blank" rel="noopener" hidden aria-label="Open the poster full size (opens in a new tab)"><img id="gpProjectImg" alt=""></a>
@@ -1678,46 +1749,202 @@
     const progress = document.getElementById("xProgress");
     const barFill = document.getElementById("xBarFill");
     const progressText = document.getElementById("xProgressText");
-    const degreeSel = document.getElementById("xDegree"), degreeOther = document.getElementById("xDegreeOther");
+    const more = document.getElementById("xMore");
+    const $ = id => document.getElementById(id);
+    const degreeSel = $("xDegree"), degreeOther = $("xDegreeOther");
     degreeSel.addEventListener("change", () => {
       showError("degree", "");
       degreeOther.hidden = degreeSel.value !== "other";
       if (!degreeOther.hidden) degreeOther.focus();
     });
-    const fields = { name: "xName", degree: "xDegree", linkedin: "xLinkedin", title: "xTitle", overview: "xOverview", photo: "xPhoto", poster: "xPoster", booklet: "xBooklet", consent: "xConsent" };
-
-    // The three uploads. Sizes in MB, per type; the server checks them again,
-    // and checks each file's real first bytes once it has arrived.
-    const MB = 1024 * 1024;
-    const FILES = {
-      photo:   { label: "headshot", types: { jpg: 20, png: 20, webp: 20 } },
-      poster:  { label: "poster",   types: { pdf: 300, jpg: 60, png: 60 } },
-      booklet: { label: "booklet",  types: { pdf: 1024 } },
+    const fields = {
+      name: "xName", email: "xEmail", exhibit: "xExhibit", directory: "xDirectory", degree: "xDegree", title: "xTitle", overview: "xOverview",
+      photo: "xPhoto", poster: "xPoster", linkedin: "xLinkedin", instagram: "xInstagram", website: "xSite", consent: "xConsent",
     };
-    const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };
-    const extOf = f => EXT[f.type] || ({ jpg: "jpg", jpeg: "jpg", png: "png", webp: "webp", pdf: "pdf" })[(f.name.split(".").pop() || "").toLowerCase()];
+
+    // The two questions decide what else is asked. Yes to either: everything.
+    // No to both: nothing more, and the form just records the answer.
+    const answer = name => { const r = form.querySelector('input[name="' + name + '"]:checked'); return r ? r.value === "yes" : null; };
+    function answered() {
+      const ex = answer("exhibit"), dir = answer("directory");
+      more.hidden = !(ex || dir);
+      $("xDirOnly").hidden = !(ex === false && dir === true);
+      $("xNeither").hidden = !(ex === false && dir === false);
+      return { ex, dir };
+    }
+    form.querySelectorAll('input[name="exhibit"], input[name="directory"]').forEach(r => r.addEventListener("change", () => {
+      showError(r.name, "");
+      answered();
+    }));
+
+    // The poster. Pixels are what print, so its pixel size is read from the
+    // PNG header here and checked again by the server. Keep in step with server.mjs.
+    const MB = 1024 * 1024;
+    const POSTER = { maxMB: 250, short: 3508, long: 4967 };
+    const TILE = { w: 600, h: 800 };
     const sizeText = n => n >= 1024 * MB ? (n / 1024 / MB).toFixed(2) + " GB" : (n / MB).toFixed(1) + " MB";
-    const hints = {};
-    for (const kind of Object.keys(FILES)) {
-      const input = document.getElementById(fields[kind]);
-      const hint = document.getElementById(fields[kind] + "Name");
-      hints[kind] = hint.textContent;
-      input.addEventListener("change", () => {
-        const f = input.files[0];
-        hint.textContent = f ? f.name + " (" + sizeText(f.size) + ")" : hints[kind];
-        showError(kind, f ? fileProblem(kind, f) : "");
-      });
+    let posterCheck = Promise.resolve({ problem: "Please attach your poster." });
+    async function pngSize(file) {
+      const b = new Uint8Array(await file.slice(0, 24).arrayBuffer());
+      const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+      if (b.length < 24 || sig.some((v, i) => b[i] !== v) || String.fromCharCode(...b.slice(12, 16)) !== "IHDR") return null;
+      const v = new DataView(b.buffer);
+      return { w: v.getUint32(16), h: v.getUint32(20) };
     }
-    function fileProblem(kind, f) {
-      const spec = FILES[kind], ext = extOf(f);
-      if (!ext || !spec.types[ext]) {
-        const t = Object.keys(spec.types).map(e => e.toUpperCase());
-        return "Your " + spec.label + " must be a " + (t.length === 1 ? t[0] : t.slice(0, -1).join(", ") + " or " + t[t.length - 1]) + ".";
+    async function checkPoster(f) {
+      if (!f) return { problem: "Please attach your poster." };
+      if (f.size === 0) return { problem: "That file is empty." };
+      const d = await pngSize(f).catch(() => null);
+      if (!d) return { problem: "Your poster must be a PNG. Please export it from your design program as a PNG." };
+      if (f.size > POSTER.maxMB * MB) return { problem: "That poster is too big. The limit is " + POSTER.maxMB + " MB. Try exporting the PNG again with compression on." };
+      if (Math.min(d.w, d.h) < POSTER.short || Math.max(d.w, d.h) < POSTER.long) {
+        return { problem: "That poster is " + d.w + " × " + d.h + " pixels, too small to print. Please export it again as a PNG at a higher resolution: at least " + POSTER.short + " × " + POSTER.long + " pixels (A1 at 150 DPI).", d };
       }
-      if (f.size > spec.types[ext] * MB) return "That " + spec.label + " is too big. The limit is " + spec.types[ext] + " MB for " + ext.toUpperCase() + ".";
-      if (f.size === 0) return "That file is empty.";
-      return "";
+      return { problem: "", d };
     }
+    const posterIn = $("xPoster");
+    posterIn.addEventListener("change", () => {
+      const f = posterIn.files[0];
+      $("xPosterName").textContent = f ? f.name + " (" + sizeText(f.size) + ")" : "";
+      showError("poster", "");
+      posterCheck = checkPoster(f);
+      posterCheck.then(c => { if (posterIn.files[0] === f) { showError("poster", f ? c.problem : ""); if (c.d && !c.problem) $("xPosterName").textContent += ", " + c.d.w + " × " + c.d.h + " px"; } });
+    });
+
+    // The headshot: cropped here to a 600 × 800 portrait tile and turned black
+    // and white. Only the tile is uploaded.
+    const photoIn = $("xPhoto");
+    const photoHint = $("xPhotoName").textContent;
+    const crop = { dialog: $("xCrop"), canvas: $("xCropCanvas"), zoom: $("xCropZoom"), bmp: null, s: 1, min: 1, max: 1, x: 0, y: 0 };
+    let tile = null; // { blob, url }
+    let pending = null; // a newly chosen photo waiting in the crop window
+
+    function drawCrop() {
+      const g = crop.canvas.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, TILE.w, TILE.h);
+      if (crop.bmp) g.drawImage(crop.bmp, crop.x, crop.y, crop.bmp.width * crop.s, crop.bmp.height * crop.s);
+    }
+    function clampCrop() {
+      const w = crop.bmp.width * crop.s, h = crop.bmp.height * crop.s;
+      crop.x = Math.min(0, Math.max(TILE.w - w, crop.x));
+      crop.y = Math.min(0, Math.max(TILE.h - h, crop.y));
+    }
+    function zoomTo(s, cx = TILE.w / 2, cy = TILE.h / 2) {
+      s = Math.min(crop.max, Math.max(crop.min, s));
+      crop.x = cx - (cx - crop.x) * (s / crop.s);
+      crop.y = cy - (cy - crop.y) * (s / crop.s);
+      crop.s = s;
+      clampCrop();
+      crop.zoom.value = crop.max > crop.min ? Math.round(Math.log(s / crop.min) / Math.log(crop.max / crop.min) * 100) : 0;
+      drawCrop();
+    }
+    function startCrop(bmp) {
+      crop.bmp = bmp;
+      crop.min = Math.max(TILE.w / bmp.width, TILE.h / bmp.height);   // the photo always covers the tile
+      crop.max = Math.max(crop.min, 1);                                 // and is never enlarged past its own pixels
+      crop.s = crop.min;
+      crop.x = (TILE.w - bmp.width * crop.s) / 2;
+      crop.y = (TILE.h - bmp.height * crop.s) / 2;
+      crop.zoom.value = 0;
+      crop.zoom.disabled = crop.max <= crop.min;
+      drawCrop();
+    }
+    async function makeTile() {
+      const c = document.createElement("canvas");
+      c.width = TILE.w; c.height = TILE.h;
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, TILE.w, TILE.h);
+      g.drawImage(crop.bmp, crop.x, crop.y, crop.bmp.width * crop.s, crop.bmp.height * crop.s);
+      // Black and white, whatever it was: luminance into every channel.
+      const img = g.getImageData(0, 0, TILE.w, TILE.h), p = img.data;
+      for (let i = 0; i < p.length; i += 4) {
+        const y = Math.round(0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]);
+        p[i] = p[i + 1] = p[i + 2] = y;
+      }
+      g.putImageData(img, 0, 0);
+      return new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+    }
+    async function useCrop() {
+      const blob = await makeTile();
+      if (!blob) { showError("photo", "That photo could not be cropped in this browser. Please try another browser."); return; }
+      if (tile) URL.revokeObjectURL(tile.url);
+      tile = { blob, url: URL.createObjectURL(blob) };
+      $("xTileImg").src = tile.url;
+      $("xTile").hidden = false;
+      if (pending) { $("xPhotoName").textContent = pending.name + ", cropped to 600 × 800, black and white."; pending = null; }
+      showError("photo", "");
+    }
+
+    photoIn.addEventListener("change", async () => {
+      const f = photoIn.files[0];
+      photoIn.value = "";   // the tile is what is sent; choosing the same file again reopens the crop
+      if (!f) return;
+      showError("photo", "");
+      let bmp;
+      try { bmp = await createImageBitmap(f); } catch {
+        showError("photo", "That photo could not be opened. Please choose a JPG, PNG or WebP.");
+        return;
+      }
+      if (bmp.width < TILE.w || bmp.height < TILE.h) {
+        showError("photo", "That photo is " + bmp.width + " × " + bmp.height + " pixels. It needs to be at least 600 × 800. Please choose a larger one.");
+        bmp.close?.();
+        return;
+      }
+      const old = crop.bmp;
+      pending = f;
+      startCrop(bmp);
+      if (old && old !== bmp) old.close?.();
+      // A photo already the tile's shape is used as it is; the crop window stays a click away.
+      if (Math.abs(bmp.width / bmp.height - TILE.w / TILE.h) < 0.01) await useCrop();
+      else openCrop();
+    });
+    let saved = null;
+    function openCrop() {
+      saved = { s: crop.s, x: crop.x, y: crop.y };
+      crop.dialog.showModal();
+      crop.canvas.focus();
+    }
+    $("xRecrop").addEventListener("click", () => { if (crop.bmp) openCrop(); });
+    $("xCropOk").addEventListener("click", async () => { crop.dialog.close(); await useCrop(); $("xRecrop").focus(); });
+    crop.dialog.addEventListener("cancel", () => cancelCrop());
+    $("xCropCancel").addEventListener("click", () => { crop.dialog.close(); cancelCrop(); });
+    function cancelCrop() {
+      if (pending && !tile) { crop.bmp?.close?.(); crop.bmp = null; }
+      else if (saved) { Object.assign(crop, saved); drawCrop(); }
+      if (pending) showError("photo", tile ? "" : "Please crop your headshot to use it.");
+      pending = null;
+    }
+    crop.zoom.addEventListener("input", () => zoomTo(crop.min * Math.pow(crop.max / crop.min, crop.zoom.value / 100)));
+    // Dragging and pinching. Pointer positions are turned into tile pixels.
+    const pointers = new Map();
+    let pinch = null;
+    const toTile = e => { const r = crop.canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * TILE.w / r.width, y: (e.clientY - r.top) * TILE.h / r.height }; };
+    crop.canvas.addEventListener("pointerdown", e => { crop.canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, toTile(e)); pinch = null; });
+    crop.canvas.addEventListener("pointermove", e => {
+      if (!pointers.has(e.pointerId) || !crop.bmp) return;
+      const now = toTile(e), before = pointers.get(e.pointerId);
+      pointers.set(e.pointerId, now);
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinch) zoomTo(crop.s * dist / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        pinch = dist;
+        return;
+      }
+      crop.x += now.x - before.x; crop.y += now.y - before.y;
+      clampCrop(); drawCrop();
+    });
+    const lift = e => { pointers.delete(e.pointerId); pinch = null; };
+    crop.canvas.addEventListener("pointerup", lift);
+    crop.canvas.addEventListener("pointercancel", lift);
+    crop.canvas.addEventListener("wheel", e => { e.preventDefault(); const p = toTile(e); zoomTo(crop.s * Math.exp(-e.deltaY * 0.0015), p.x, p.y); }, { passive: false });
+    crop.canvas.addEventListener("keydown", e => {
+      const step = e.shiftKey ? 50 : 10;
+      const move = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+      if (move) { crop.x += move[0]; crop.y += move[1]; clampCrop(); drawCrop(); e.preventDefault(); }
+      else if (e.key === "+" || e.key === "=") { zoomTo(crop.s * 1.1); e.preventDefault(); }
+      else if (e.key === "-" || e.key === "_") { zoomTo(crop.s / 1.1); e.preventDefault(); }
+    });
 
     const MAX_WORDS = 150;
     const words = t => (t.trim().match(/\S+/g) || []).length;
@@ -1727,30 +1954,40 @@
       count.classList.toggle("over", n > MAX_WORDS);
     });
     form.consent.addEventListener("change", () => { if (form.consent.checked) showError("consent", ""); });
+    // A field's error goes as soon as the person changes that field.
+    const keyOf = Object.fromEntries(Object.entries(fields).map(([k, id]) => [id, k]));
+    form.addEventListener("input", e => { const k = keyOf[e.target.id]; if (k && k !== "photo" && k !== "poster") showError(k, ""); });
 
     function showError(key, msg) {
-      const input = document.getElementById(fields[key]);
-      const err = document.getElementById(fields[key] + "Err");
+      const input = $(fields[key]);
+      const err = $(fields[key] + "Err");
       if (err) err.textContent = msg || "";
       if (input) input.setAttribute("aria-invalid", msg ? "true" : "false");
     }
-    function check() {
+    const looksLikeUrl = v => /^(https?:\/\/)?[^\s/@]+\.[^\s/]{2,}(\/\S*)?$/i.test(v);
+    async function check() {
       const errs = {};
       const name = form.name.value.trim().replace(/\s+/g, " ");
       if (name.split(" ").filter(Boolean).length < 2) errs.name = "Please give your full name, first and last.";
-      const deg = document.getElementById("xDegree"), degOther = document.getElementById("xDegreeOther");
-      if (!deg.value) errs.degree = "Please choose your degree.";
-      else if (deg.value === "other" && !degOther.value.trim()) errs.degree = "Please write your degree.";
-      const li = form.linkedin.value.trim();
-      if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
-      if (!document.getElementById("xTitle").value.trim()) errs.title = "Please give your project a title.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value.trim())) errs.email = "Please give an email address we can reach you on.";
+      const { ex, dir } = answered();
+      if (ex === null) errs.exhibit = "Please answer yes or no.";
+      if (dir === null) errs.directory = "Please answer yes or no.";
+      if (!(ex || dir)) return errs;
+      if (!degreeSel.value) errs.degree = "Please choose your degree.";
+      else if (degreeSel.value === "other" && !degreeOther.value.trim()) errs.degree = "Please write your degree.";
+      if (!$("xTitle").value.trim()) errs.title = "Please give your project a title.";
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
       else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
-      for (const kind of Object.keys(FILES)) {
-        const f = document.getElementById(fields[kind]).files[0];
-        const problem = f ? fileProblem(kind, f) : "Please attach your " + FILES[kind].label + ".";
-        if (problem) errs[kind] = problem;
-      }
+      if (!tile) errs.photo = "Please add your headshot.";
+      const pc = await posterCheck;
+      if (pc.problem) errs.poster = pc.problem;
+      const li = form.linkedin.value.trim();
+      if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
+      const ig = form.instagram.value.trim();
+      if (ig && !/^@?[a-z0-9._]{1,30}$/i.test(ig) && !/instagram\.com\/[a-z0-9._]{1,30}\/?(\?.*)?$/i.test(ig)) errs.instagram = "That does not look like an Instagram handle or link.";
+      const site = form.site.value.trim();
+      if (site && !looksLikeUrl(site)) errs.website = "That does not look like a web address.";
       if (!form.consent.checked) errs.consent = "Please tick the box to agree to how your details are used.";
       return errs;
     }
@@ -1792,22 +2029,27 @@
       });
     }
 
-    // Every part of every file, four at a time, each retried with a growing wait.
-    async function webCopy(file, maxEdge, quality) {
-      if (!file) return null;
+    // The poster's web copy for the Student Directory, so the site never serves
+    // a 200 MB PNG. Decoded straight to the small size where the browser can,
+    // which spares a phone the full poster in memory. None if it cannot.
+    async function webCopy(file, d, maxEdge, quality) {
       try {
-        const bmp = await createImageBitmap(file);
-        const k = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
+        const k = Math.min(1, maxEdge / Math.max(d.w, d.h));
+        const w = Math.round(d.w * k), h = Math.round(d.h * k);
+        let bmp;
+        try { bmp = await createImageBitmap(file, { resizeWidth: w, resizeHeight: h, resizeQuality: "high" }); }
+        catch { bmp = await createImageBitmap(file); }
         const c = document.createElement("canvas");
-        c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+        c.width = w; c.height = h;
         const g = c.getContext("2d");
-        g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
-        g.drawImage(bmp, 0, 0, c.width, c.height);
+        g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
+        g.drawImage(bmp, 0, 0, w, h);
         bmp.close?.();
         return await new Promise(r => c.toBlob(r, "image/jpeg", quality));
       } catch { return null; }
     }
 
+    // Every part of every file, four at a time, each retried with a growing wait.
     async function uploadAll(plan, partSize, files) {
       const jobs = [];
       for (const [kind, { urls }] of Object.entries(plan)) {
@@ -1846,46 +2088,73 @@
 
     let uploading = false;
     window.addEventListener("beforeunload", e => { if (uploading) { e.preventDefault(); e.returnValue = ""; } });
+    const LABEL = { photo: "Headshot", poster: "Poster" };
+
+    function showDone(names, { ex, dir }) {
+      const first = form.name.value.trim().split(/\s+/)[0];
+      $("xDoneName").textContent = first ? ", " + first : "";
+      const declined = !ex && !dir;
+      $("xDoneSaved").hidden = declined;
+      $("xDoneDeclined").hidden = !declined;
+      const list = $("xDoneFiles");
+      list.hidden = declined;
+      list.replaceChildren(...Object.keys(LABEL).filter(k => names[k]).map(k => {
+        const li = document.createElement("li");
+        const span = document.createElement("span");
+        span.textContent = names[k];
+        li.append(LABEL[k] + ": ", span);
+        return li;
+      }));
+      $("xDoneListed").hidden = !dir;
+      form.hidden = true; done.hidden = false; done.focus();
+      status.textContent = "";
+    }
 
     form.addEventListener("submit", async e => {
       e.preventDefault();
       if (uploading) return;
+      uploading = true;   // held through the checks too, so a double press sends once
+      let sent = false;
       Object.keys(fields).forEach(k => showError(k, ""));
-      const errs = check();
-      if (Object.keys(errs).length) {
-        Object.entries(errs).forEach(([k, m]) => showError(k, m));
-        status.textContent = "Some fields need another look.";
-        document.getElementById(fields[Object.keys(errs)[0]]).focus();
-        return;
-      }
-      // Turnstile writes its token into the form when its check passes.
-      const robot = form.querySelector('[name="cf-turnstile-response"]');
-      if (!robot || !robot.value) {
-        status.textContent = "Still checking you are not a robot. Please wait a moment and press Submit again.";
-        return;
-      }
-      const files = Object.fromEntries(Object.keys(FILES).map(k => [k, document.getElementById(fields[k]).files[0]]));
-      // For the Student Directory, small JPEG copies made here, so the site never
-      // has to serve a 20 MB headshot or a 60 MB poster. A browser that cannot
-      // read an image just sends none, and the original stands in.
-      const listed = document.getElementById("xDirectory").checked;
-      if (listed) {
-        const [pw, sw] = await Promise.all([
-          webCopy(files.photo, 1200, 0.85),
-          extOf(files.poster) !== "pdf" ? webCopy(files.poster, 2400, 0.88) : null,
-        ]);
-        if (pw) files.photoWeb = new File([pw], "photo-web.jpg", { type: "image/jpeg" });
-        if (sw) files.posterWeb = new File([sw], "poster-web.jpg", { type: "image/jpeg" });
-      }
-      uploading = true;
-      submitBtn.disabled = true;
-      submitBtn.textContent = "[ Sending… ]";
-      status.textContent = "";
-      progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
       try {
+        const errs = await check();
+        if (Object.keys(errs).length) {
+          Object.entries(errs).forEach(([k, m]) => showError(k, m));
+          status.textContent = "Some fields need another look.";
+          const el = $(fields[Object.keys(errs)[0]]);
+          (el.matches("fieldset") ? el.querySelector("input") : el).focus();
+          return;
+        }
+        // Turnstile writes its token into the form when its check passes.
+        const robot = form.querySelector('[name="cf-turnstile-response"]');
+        if (!robot || !robot.value) {
+          status.textContent = "Still checking you are not a robot. Please wait a moment and press Submit again.";
+          return;
+        }
+        const ans = answered();
+        const want = ans.ex || ans.dir;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "[ Sending… ]";
+        status.textContent = "";
+        const files = {};
+        if (want) {
+          files.photo = new File([tile.blob], "headshot.jpg", { type: "image/jpeg" });
+          files.poster = posterIn.files[0];
+          if (ans.dir) {
+            progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Preparing your poster for the Student Directory…";
+            const pw = await webCopy(files.poster, (await posterCheck).d, 2400, 0.88);
+            if (pw) files.posterWeb = new File([pw], "poster-web.jpg", { type: "image/jpeg" });
+          }
+          progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
+        }
+        const details = want ? {
+          degree: degreeSel.value === "other" ? degreeOther.value : degreeSel.value, title: $("xTitle").value, overview: overview.value,
+          linkedin: form.linkedin.value, instagram: form.instagram.value, website: form.site.value, from: form.from.value, consent: form.consent.checked,
+        } : {};
+        sent = true;
         const started = await postJson("/_s/start", {
-          name: form.name.value, degree: document.getElementById("xDegree").value === "other" ? document.getElementById("xDegreeOther").value : document.getElementById("xDegree").value, linkedin: form.linkedin.value, from: form.from.value, title: document.getElementById("xTitle").value, overview: overview.value,
-          consent: form.consent.checked, directory: listed, website: form.website.value, turnstile: robot.value,
+          name: form.name.value, email: form.email.value, exhibit: ans.ex, directory: ans.dir, ...details,
+          ref_code: form.ref_code.value, turnstile: robot.value,
           files: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, { size: f.size, type: f.type || "", name: f.name }])),
         }, 3);
         if (!started.res.ok || !started.data.ok) {
@@ -1894,6 +2163,7 @@
           return;
         }
         if (started.data.decoy) return;
+        if (started.data.done) return showDone({}, ans);
         let etags;
         try {
           etags = await uploadAll(started.data.files, started.data.partSize, files);
@@ -1911,19 +2181,7 @@
           status.textContent = finished.data.error || "That did not send. Please try again.";
           return;
         }
-        const first = form.name.value.trim().split(/\s+/)[0];
-        document.getElementById("xDoneName").textContent = first ? ", " + first : "";
-        const list = document.getElementById("xDoneFiles");
-        list.replaceChildren(...Object.keys(FILES).filter(k => finished.data.names[k]).map(k => [k, finished.data.names[k]]).map(([k, n]) => {
-          const li = document.createElement("li");
-          const span = document.createElement("span");
-          span.textContent = n;
-          li.append(FILES[k].label[0].toUpperCase() + FILES[k].label.slice(1) + ": ", span);
-          return li;
-        }));
-        document.getElementById("xDoneListed").hidden = !listed;
-        form.hidden = true; done.hidden = false; done.focus();
-        status.textContent = "";
+        showDone(finished.data.names || {}, ans);
       } catch {
         status.textContent = "That did not send. Check your connection and try again.";
       } finally {
@@ -1932,15 +2190,22 @@
         submitBtn.disabled = false;
         submitBtn.textContent = "[ Submit ]";
         // A Turnstile token works once; get a fresh one for the next attempt.
-        if (window.turnstile) window.turnstile.reset();
+        if (sent && window.turnstile) window.turnstile.reset();
       }
     });
 
-    document.getElementById("xAgain").addEventListener("click", () => {
+    $("xAgain").addEventListener("click", () => {
       form.reset();
       degreeOther.hidden = true;
       count.textContent = "0 / " + MAX_WORDS; count.classList.remove("over");
-      for (const kind of Object.keys(FILES)) document.getElementById(fields[kind] + "Name").textContent = hints[kind];
+      if (tile) URL.revokeObjectURL(tile.url);
+      tile = null; pending = null;
+      crop.bmp?.close?.(); crop.bmp = null;
+      $("xTile").hidden = true;
+      $("xPhotoName").textContent = photoHint;
+      $("xPosterName").textContent = "";
+      posterCheck = checkPoster(null);
+      answered();
       done.hidden = true; form.hidden = false;
       form.name.focus();
     });
@@ -2042,15 +2307,18 @@
     document.getElementById("gpPhoto").alt = g.name;
     document.getElementById("gpName").textContent = g.name;
     document.getElementById("gpDegree").textContent = g.degree || "";
-    const li = document.getElementById("gpLinkedin");
-    li.hidden = !g.linkedin; if (g.linkedin) { li.href = g.linkedin; li.setAttribute("aria-label", "LinkedIn (opens in a new tab)"); }
+    for (const [id, key, label] of [["gpLinkedin", "linkedin", "LinkedIn"], ["gpInstagram", "instagram", "Instagram"], ["gpWebsite", "website", "Website"]]) {
+      const a = document.getElementById(id), url = g[key];
+      // Only web addresses: the server refuses anything else, and this checks again.
+      const ok = typeof url === "string" && /^https:\/\//.test(url);
+      a.hidden = !ok;
+      if (ok) { a.href = url; a.setAttribute("aria-label", label + " (opens in a new tab)"); }
+    }
     document.getElementById("gpTitle").textContent = g.title || "";
     document.getElementById("gpOverview").textContent = g.overview;
-    const pdf = document.getElementById("gpPdf"), proj = document.getElementById("gpProject");
+    const proj = document.getElementById("gpProject");
     const poster = g.poster;
-    pdf.hidden = !(poster && poster.kind === "pdf");
     proj.hidden = !(poster && poster.kind === "image");
-    if (poster && poster.kind === "pdf") { pdf.href = poster.url; pdf.setAttribute("aria-label", "View the poster as a PDF (opens in a new tab)"); }
     if (poster && poster.kind === "image") {
       proj.href = poster.url;
       const pi = document.getElementById("gpProjectImg"); pi.src = poster.url; pi.alt = g.name + ", project poster";

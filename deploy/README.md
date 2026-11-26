@@ -34,7 +34,7 @@ GitHub credential that can write here. The server pulls; GitHub never pushes.
 | `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `submissions` (the exhibition form, with the R2 bucket `stitch-uploads`) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
 | `deploy/nginx.conf` | Security headers, gzip, cache policy, the `www` → apex redirect, and the usage beacon |
 | `deploy/usage/` | The usage counters. `beacon.js` is added to every page by nginx as it serves it, so `index.html` never carries it. It sends one word per page view or click: no cookie, no storage, no identifier. `server.mjs` counts the words and serves the totals on `127.0.0.1:9094` for the monitoring page. If it is down, the page is unaffected |
-| `deploy/submissions/` | The exhibition form on the Links page: each graduate's details plus a headshot, a poster and a booklet. The files go from the browser straight to the R2 bucket `stitch-uploads`; `server.mjs` signs the upload URLs, checks what arrived, and copies it down to this box. `r2.mjs` talks to R2, `zip.mjs` builds the committee's downloads, `metadata.mjs` strips image metadata. `dev.mjs` runs the site and the form locally. See *Exhibition submissions* below |
+| `deploy/submissions/` | The exhibition form on the Links page: each graduate's name, email and two yes/no questions, then (on a yes) their details, a headshot tile and a PNG poster. The files go from the browser straight to the R2 bucket `stitch-uploads`; `server.mjs` signs the upload URLs, checks what arrived, and copies it down to this box. `r2.mjs` talks to R2, `zip.mjs` builds the committee's downloads, `metadata.mjs` strips image metadata. `dev.mjs` runs the site and the form locally. See *Exhibition submissions* below |
 | `deploy/provision-tunnel.sh` | Creates or reuses the Cloudflare tunnel and DNS. Idempotent; safe to re-run |
 | `.env.example` | The variable names. The real `.env` lives only on the server and is gitignored |
 
@@ -82,8 +82,12 @@ after the box's Sunday-morning reboot, and on the monitoring page at
 
 ## Exhibition submissions
 
-Graduates fill in the form under **Links → Exhibition**: their details, a
-headshot, their project poster and their project booklet. The decisions behind
+Graduates fill in the form under **Links → Exhibition**: their name and
+personal email, then two yes/no questions: will they exhibit on the night, and
+do they want to be in the Student Directory. A yes to either asks for the rest:
+degree, project title and overview, optional LinkedIn, Instagram, website and
+place of origin, a headshot and a PNG poster. No to both submits the name,
+email and answers alone, stored at once with no upload. The decisions behind
 every limit are in `SECURITY.md`; the load test behind them is in
 `deploy/submissions/LOADTEST.md`.
 
@@ -94,24 +98,29 @@ every limit are in `SECURITY.md`; the load test behind them is in
          ◀──── presigned part URLs, valid 24 h ────────────────
  browser ──2. PUT each 16 MB part, 4 at a time, retried ──────▶ R2 bucket stitch-uploads
  browser ──3. POST /_s/complete (the parts' ETags) ───────────▶ submissions
-                                     checks size + first bytes in R2 ──▶ "uploaded"
+                       checks size, first bytes, pixel size in R2 ──▶ "uploaded"
  submissions ◀──4. transfer worker, 2 files at a time ──────── R2  ──▶ "stored"
 ```
 
 The files never pass through nginx, through Cloudflare's 100 MB limit on a
 request to stitchexhibition.com, or up the home connection. A rush of 300
 people becomes a queue in R2 that the box drains at its own pace (R2 to the
-box measured 368 Mbit/s; a 1 GB booklet comes down in about 25 s). Every
+box measured 368 Mbit/s; a 250 MB poster comes down in about 6 s). Every
 submission is a JSON record on the `submissions-data` volume, so a restart
 picks the queue up where it stopped.
 
-- **Files:** headshot JPG, PNG or WebP up to 20 MB; poster PDF up to 300 MB,
-  or JPG or PNG up to 60 MB; booklet PDF up to 1 GB. Types are checked twice:
-  as declared at start, and by each file's real first bytes in R2 at complete.
-  Image metadata (location, camera) is removed before anything is kept. HEIC is
-  refused; iPhones convert to JPEG by themselves for this form.
+- **Files:** the headshot is cropped in the browser (a crop window to move
+  and zoom it) to a 600 x 800 black-and-white JPEG tile, and only the tile is
+  sent; the service refuses any other size. The poster is PNG only, up to
+  250 MB, and at least 3508 x 4967 px either way up (A1 at 150 DPI): the
+  browser reads the PNG header before uploading and the service reads it again
+  in R2. To change the minimum, change `POSTER_MIN` in `server.mjs` and
+  `POSTER` in `index.html` together. Types are checked twice: as declared at
+  start, and by each file's real first bytes in R2 at complete. Image metadata
+  (location, camera, text) is removed before anything is kept; the poster is
+  stripped as it streams, never held in memory. There is no booklet.
 - **Where it lands:** records and headshots on `submissions-data` (backed up
-  nightly by `nch-backup-all`); posters and booklets on `submissions-files`.
+  nightly by `nch-backup-all`); posters on `submissions-files`.
   Every object stays in R2 as well, as the off-box copy of the big files, until
   the deletion date.
 - **Limits:** 120 starts or completes a minute per address (a class on campus
@@ -133,8 +142,7 @@ picks the queue up where it stopped.
 ```bash
 # the committee's downloads, from anywhere (any username, the key as password)
 https://stitchexhibition.com/_s/export            # submissions.xlsx + photos/<Full Name>.jpg
-https://stitchexhibition.com/_s/export/posters    # posters/<Full Name>.pdf   (large)
-https://stitchexhibition.com/_s/export/booklets   # booklets/<Full Name>.pdf  (very large)
+https://stitchexhibition.com/_s/export/posters    # posters/<Full Name>.png   (large)
 https://stitchexhibition.com/_s/status            # headcount, the queue, anything flagged
 
 # the queue, from the box
@@ -143,7 +151,7 @@ docker logs stitch-exhibition-submissions-1 --since 1h | grep -E 'start|complete
 # remove one person on request: find their records, then delete their files here and in R2
 docker exec stitch-exhibition-submissions-1 grep -l '"name": "Full Name"' /data/*.json
 docker exec stitch-exhibition-submissions-1 sh -c 'rm /data/<id>.* /files/<id>.*'
-#   ...and the three objects under submissions/<id>/ in the stitch-uploads bucket
+#   ...and the objects under submissions/<id>/ in the stitch-uploads bucket
 #   (Cloudflare dashboard → R2 → stitch-uploads)
 ```
 
@@ -156,17 +164,19 @@ it could not send.
 
 ### Student Directory
 
-Graduates who tick "Show my profile in the Student Directory" also upload small
-JPEG web copies of their headshot and image poster (kinds `photoWeb` and
-`posterWeb`, optional, through the same `/start` → R2 → transfer path). Nothing
+Graduates who answer yes to the Student Directory also upload a small JPEG
+web copy of their poster (kind `posterWeb`, optional, through the same
+`/start` → R2 → transfer path); the headshot tile is served as it is. Nothing
 is public until the committee approves it at `https://stitchexhibition.com/_s/review`
 (same password as the downloads). The page lists everyone as waiting, live,
 hidden or not in the directory, with Approve and Hide; decisions go to
 `/data/approvals.state`. The Directory page reads `/_s/directory.json`, the
-images come from `/_s/media/<id>/<kind>.<ext>` (Cloudflare caches them for up to five
-minutes, so a hidden profile's images are gone within five minutes), and a PDF poster from `/_s/poster/<id>`,
-which redirects to a 15-minute presigned R2 link so it never goes up the home
-connection. The sheet has "Asked for directory" and "Directory" columns.
+images come from `/_s/media/<id>/(photo|posterWeb).jpg` (Cloudflare caches them
+for up to five minutes, so a hidden profile's images are gone within five
+minutes). Profiles show LinkedIn, Instagram and website links; email, place of
+origin and the poster PNG are never public. The sheet has "Personal email",
+"Exhibiting", "Asked for directory" and "Directory" columns, and lists people
+who said no to both with their name and email only.
 
 To try it locally, `node deploy/submissions/dev.mjs` now runs a stand-in for R2
 (`dev-r2.mjs`, localhost only, never in the image) when no R2 settings are in
@@ -175,8 +185,9 @@ the shell, so the whole flow works without a bucket: submit at
 it at `/#directory`.
 
 **Exports are served from this box, so they go up the home connection** (about
-44 Mbit/s measured): the sheet and headshots take seconds, but tens of GB of
-booklets take hours. Start the booklets download well before it is needed.
+44 Mbit/s measured): the sheet and headshots take seconds, but the posters
+(up to 250 MB each) can take an hour or more. Start that download well before
+it is needed.
 
 ## Rebuilding the tunnel from nothing
 

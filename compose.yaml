@@ -81,7 +81,7 @@ services:
       start_period: 5s
       retries: 3
 
-  # Exhibition submissions: a headshot, a poster and a booklet from each
+  # Exhibition submissions: a headshot tile and a PNG poster from each
   # graduate. The files go from the browser straight to the R2 bucket named
   # below, never through nginx or the home connection; this service signs the
   # upload URLs, checks what arrived, and copies it down from R2 at its own pace.
@@ -154,7 +154,7 @@ services:
 volumes:
   # Every submission record and headshot. Backed up nightly by nch-backup-all.
   submissions-data:
-  # Every poster and booklet: tens of GB, too big for the nightly archive. The
+  # Every poster: tens of GB in all, too big for the nightly archive. The
   # off-box copy is the R2 bucket, which keeps each object until the deletion
   # date (SECURITY.md).
   submissions-files:

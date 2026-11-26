@@ -4,7 +4,7 @@
  *
  * Small parts are deflated in memory. Files are streamed from disk as stored
  * entries, using the size and CRC recorded when they were saved, so memory
- * stays flat however much there is. Posters and booklets run to tens of
+ * stays flat however much there is. The posters run to tens of
  * gigabytes in all, so entries and offsets past 4 GB switch to ZIP64, which
  * macOS, Windows and 7-Zip all read. Below 4 GB the zip is a plain one.
  */

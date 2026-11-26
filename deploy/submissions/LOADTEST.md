@@ -5,6 +5,24 @@ on the production server, uploading to a separate R2 bucket, `stitch-uploads-tes
 Turnstile used Cloudflare's always-pass test secret. Each simulated student did
 what the browser does: `/start`, upload every part straight to R2, `/complete`.
 
+## After the form was refined (2026-11-26, STITCH-2)
+
+The form now takes two files, not three: a 600 x 800 headshot tile and a PNG
+poster up to 250 MB. The booklet is gone. Every load below sent more, and
+bigger, files per student than the refined form allows, so it still covers it,
+and the load test was not repeated. What changed was checked against `dev.mjs`
+and its R2 stand-in:
+
+| Check | Result |
+|---|---|
+| 35 API checks: the two questions, no-to-both, file types, pixel sizes, links, directory, review, exports | 35 of 35 pass |
+| One 209 MB PNG poster (7016 x 9933 px, 13 parts) | stored; text chunk removed; pixels identical to the upload; service memory 81 MB before, **119 MB peak**, because the poster is stripped as it streams |
+| A truncated PNG poster | flagged "could not be read" for the committee; not retried for ever |
+| nginx routes, against an echo upstream | tile and poster web copy reach the service; `.png`, `photoWeb`, `/_s/poster/` and `/export/booklets` answer 404 |
+| Real browser (Chromium, desktop and phone width): no to both, directory only, crop window, poster checks, approve, profile | every step as intended; tile 600 x 800 with no colour left in it |
+
+The tables below are the original run, with the booklet.
+
 ## The connection
 
 | Direction | Measured | What uses it |
