@@ -44,6 +44,7 @@
   }
   .nav.show { opacity: 1; }
   body:not([data-view="home"]) .nav { background: var(--white); }
+  body[data-view="home"] .nav { background: #000; }
   /* during a page change the menu bar is see-through, so the pixels fill in behind it too */
   body.washing .nav { background: transparent; }
   .nav a {
@@ -57,7 +58,11 @@
   .nav a:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
 
   /* ---------- home: intro + logo ---------- */
-  .stage { position: fixed; inset: 0; }
+  /* Home is the black first screen of one long page; Info follows straight on below it */
+  .stage { position: relative; height: 100vh; height: 100svh; background: #000; flex: none; }
+  /* no scrolling until STITCH has come up */
+  #info:not(.ready) { overflow: hidden; }
+  .page:focus { outline: none; }
   .cluster { position: absolute; white-space: pre; letter-spacing: .01em; }
   .cluster .row { display: block; min-height: 1.3em; }
   .cluster .row.ghost { color: var(--red-dim); }
@@ -117,6 +122,9 @@
     margin: 0; font: inherit; letter-spacing: inherit; justify-self: start;
     background: var(--red); color: var(--white); padding: .22em .45em; margin: -.22em -.45em 0;
   }
+  /* more room between the three sections (What we do, Who we are, Meet the team) */
+  .info .ihead ~ .ihead { margin-top: clamp(56px, 12vh, 160px); }
+  @media (min-width: 701px) { .info .ihead ~ .ihead + .body { margin-top: clamp(56px, 12vh, 160px); } }
   /* meet the team: pixel portraits in a row, no boxes */
   .info .body.team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
   .info .member { margin: 0; display: grid; gap: .9em; justify-items: start; }
@@ -205,10 +213,10 @@
   .grads .gdrop-body .ggrid { padding: clamp(20px, 3.5vh, 36px) 0 clamp(28px, 5vh, 48px); }
   .grads .ggrid {
     list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(28px, 4vw, 56px) clamp(16px, 2.2vw, 32px);
+    display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: clamp(18px, 2.4vw, 32px) clamp(10px, 1.3vw, 18px);
   }
-  .grads .gcard { display: grid; gap: .3em; color: var(--ink); text-decoration: none; font-size: .82em; }
+  .grads .gcard { display: grid; gap: .2em; color: var(--ink); text-decoration: none; font-size: .68em; min-width: 0; overflow-wrap: anywhere; }
   .grads .gcard img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 50%; background: #eee; margin-bottom: .75em; transition: opacity .2s ease; }
   .grads .gcard:hover img { opacity: .85; }
   .grads .gcard:hover .gc-name { color: var(--red); }
@@ -217,7 +225,7 @@
   .grads .gc-from { color: #999; line-height: 1.3; text-transform: none; letter-spacing: 0; }
   .grads .gcard { opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; transition-delay: calc(var(--i, 0) * 40ms); }
   .grads .ggrid.in .gcard { opacity: 1; transform: none; }
-  @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 1000px) { .grads .ggrid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   .grads .gcredit { margin: clamp(36px, 6vh, 64px) 0 0; color: #999; font-size: .75em; letter-spacing: .06em; }
   .grads .gempty { margin: 0; color: #888; }
   .grads .gback { color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: clamp(20px, 4vh, 40px); }
@@ -240,7 +248,7 @@
   .grads .gproj:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
   @media (max-width: 700px) {
     .grads { padding-inline: var(--x1, 16px); }
-    .grads .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 14px; }
+    .grads .ggrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 8px; }
     .grads .gtop { grid-template-columns: minmax(0, 1fr); }
     .grads .gphoto { max-width: 300px; }
   }
@@ -473,6 +481,7 @@
   <a href="#sponsors">Sponsors</a>
 </nav>
 
+<main class="page" id="info" hidden>
 <div class="stage" id="home">
   <div id="clusters"></div>
   <div class="logo-wrap">
@@ -486,7 +495,6 @@
   <button type="button" class="skip" id="skip">Skip intro</button>
 </div>
 
-<main class="page" id="info" hidden>
   <article class="info" id="infoText">
     <div class="sr-only">
       <h1>What we do</h1>
@@ -960,7 +968,7 @@
       o.cell.el.style.opacity = ease(v).toFixed(3);
       if (v < 1) done = false;
     });
-    if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) { tagline.classList.add("show"); nav.classList.add("show"); }
+    if (now > T_LOGO_START + T_LOGO_SPREAD * 0.8) { tagline.classList.add("show"); nav.classList.add("show"); info.classList.add("ready"); }
     if (done) { skipBtn.classList.remove("show"); raf = null; return; }
     raf = requestAnimationFrame(introFrame);
   }
@@ -971,6 +979,7 @@
     cells.forEach(c => c.el.style.opacity = 1);
     tagline.classList.add("show");
     nav.classList.add("show");
+    info.classList.add("ready");
   }
 
   // the intro plays again every 20 seconds while the home page is showing
@@ -1539,6 +1548,7 @@
     });
   }
   window.addEventListener("resize", alignInfo);
+  requestAnimationFrame(alignInfo);
 
 
   // ================= SPONSORS =================
@@ -2250,53 +2260,43 @@
   }
 
 
-  // ================= HOME -> INFO BY SCROLLING =================
-  // once STITCH has come up, scrolling down on Home brings in Info (white pixels);
-  // scrolling up at the very top of Info goes back to Home with STITCH at rest
-  let homeAtRest = false, infoEnteredAt = 0, homeEnteredAt = 0;
-  const SETTLE = 900;   // ignore leftover trackpad momentum just after a page change
-  function goInfo() {
-    if (current !== "home" || washing || !nav.classList.contains("show")) return;
-    if (performance.now() - homeEnteredAt < SETTLE) return;
-    location.hash = "#info";
+  // ================= HOME + INFO: ONE PAGE =================
+  // Home (black, STITCH) and Info (white) are one scrolling page with a straight edge between them.
+  // Scrolling just scrolls; the menu, address and colours follow whichever part is under the menu.
+  const inFlow = n => n === "home" || n === "info";
+  const infoTop = () => home.offsetHeight;
+  function flowView(v) {
+    if (v === current) return;
+    current = v;
+    document.body.dataset.view = v;
+    document.querySelector('meta[name="theme-color"]').content = v === "home" ? "#000000" : "#ffffff";
+    markNav(v);
+    history.replaceState(null, "", v === "info" ? "#info" : location.pathname + location.search);
+    if (v === "info") {
+      // leave STITCH finished and still, so it is there when scrolling back up
+      clearTimeout(cycleTimer);
+      if (raf) showLogoAtRest();
+      skipBtn.classList.remove("show");
+      revealPortraits();
+    } else scheduleReplay();
   }
-  function goHome() {
-    if (current !== "info" || washing || info.scrollTop > 0) return;
-    if (performance.now() - infoEnteredAt < SETTLE) return;
-    homeAtRest = true;
-    location.hash = "#home";
-  }
-  window.addEventListener("wheel", e => {
-    if (e.deltaY > 4) goInfo();
-    else if (e.deltaY < -4) goHome();
+  info.addEventListener("scroll", () => {
+    if (!inFlow(current) || washing) return;
+    flowView(info.scrollTop >= infoTop() - nav.offsetHeight ? "info" : "home");
   }, { passive: true });
-  let touchY = null, touchTop = 0;
-  window.addEventListener("touchstart", e => { touchY = e.touches[0].clientY; touchTop = info.scrollTop; }, { passive: true });
-  window.addEventListener("touchend", e => {
-    if (touchY === null) return;
-    const dy = touchY - e.changedTouches[0].clientY; touchY = null;
-    if (dy > 40) goInfo();
-    else if (dy < -60 && touchTop <= 0) goHome();
-  }, { passive: true });
-  window.addEventListener("keydown", e => {
-    if (e.target.closest && e.target.closest("input, textarea, select, button, a")) return;
-    if (["ArrowDown", "PageDown", " "].includes(e.key) && current === "home") { e.preventDefault(); goInfo(); }
-    if (["ArrowUp", "PageUp"].includes(e.key) && current === "info" && info.scrollTop <= 0) goHome();
-  });
 
   function setView(name) {
     current = name;
     document.body.dataset.view = name;
     document.querySelector('meta[name="theme-color"]').content = name === "home" ? "#000000" : "#ffffff";
     markNav(name);
-    Object.entries(PAGES).forEach(([key, pg]) => { pg.el.hidden = key !== name; });
-    home.hidden = name !== "home";
+    Object.entries(PAGES).forEach(([key, pg]) => { pg.el.hidden = !(key === name || (key === "info" && inFlow(name))); });
+    home.hidden = !inFlow(name);
     if (name !== "home") { clearTimeout(cycleTimer); cancelAnimationFrame(raf); raf = null; skipBtn.classList.remove("show"); }
-    if (name === "home") homeEnteredAt = performance.now();
-    if (name === "home") { if (homeAtRest) { homeAtRest = false; showLogoAtRest(); skipBtn.classList.remove("show"); scheduleReplay(); } else playIntro(); }
+    if (name === "home") { info.scrollTop = 0; playIntro(); }
     else {
-      PAGES[name].el.scrollTop = 0;
-      if (name === "info") { alignInfo(); revealPortraits(); infoEnteredAt = performance.now(); }
+      if (name === "info") { showLogoAtRest(); skipBtn.classList.remove("show"); alignInfo(); info.scrollTop = infoTop(); revealPortraits(); }
+      else PAGES[name].el.scrollTop = 0;
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
       if (name === "links") { alignInfo(); typeLinks(); }
       if (name === "directory") { alignInfo(); typeDirectory(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
@@ -2308,6 +2308,11 @@
     const target = PAGES[name] ? name : "home";
     if (target === current && target === "directory") { loadGraduates().then(() => showGraduate(slugIn(location.hash))); return; }
     if (target === current || washing) return;
+    // Home <-> Info is a plain scroll on the same page, no pixel transition
+    if (inFlow(current) && inFlow(target)) {
+      info.scrollTo({ top: target === "home" ? 0 : infoTop(), behavior: reduceMotion ? "auto" : "smooth" });
+      return;
+    }
     if (!animate) { setView(target); return; }
     const bgOf = name => name === "home" ? "#000000" : PAGES[name].color;
     // white page to white page (e.g. Info -> Sponsors): black pixels, then fade to the white page
@@ -2330,7 +2335,7 @@
   // ================= START =================
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
     if (PAGES[pageOf(location.hash)]) { setView(pageOf(location.hash)); nav.classList.add("show"); }
-    else { markNav("home"); playIntro(); }
+    else setView("home");
   });
 })();
 </script>
