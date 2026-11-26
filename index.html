@@ -232,7 +232,11 @@
   .grads .gback:hover { color: var(--red); }
   .grads .gback:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
   .grads .gprof { outline: none; }
-  .grads .gtop { display: grid; grid-template-columns: minmax(0, clamp(200px, 26vw, 380px)) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
+  /* one directory tile's width, so a profile's photo is the same size as in the list */
+  .grads { --gcols: 8; --ggap: clamp(10px, 1.3vw, 18px); --tile: calc((100vw - 2 * var(--x1, 16px) - (var(--gcols) - 1) * var(--ggap)) / var(--gcols)); }
+  @media (max-width: 1000px) { .grads { --gcols: 6; } }
+  @media (max-width: 700px) { .grads { --gcols: 4; --ggap: 8px; } }
+  .grads .gtop { display: grid; grid-template-columns: var(--tile) minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); align-items: start; }
   .grads .gphoto { width: 100%; aspect-ratio: 3 / 4; object-position: 50% 50%; object-fit: cover; background: #f1f1f1; display: block; }
   .grads .ginfo { display: grid; gap: 1em; justify-items: start; max-width: 38em; }
   .grads .gname { margin: 0; font: inherit; font-size: clamp(20px, 2.4vw, 34px); letter-spacing: .02em; line-height: 1.15; font-weight: 500; }
@@ -250,8 +254,7 @@
   @media (max-width: 700px) {
     .grads { padding-inline: var(--x1, 16px); }
     .grads .ggrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 8px; }
-    .grads .gtop { grid-template-columns: minmax(0, 1fr); }
-    .grads .gphoto { max-width: 300px; }
+    .grads .gtop { grid-template-columns: var(--tile) minmax(0, 1fr); gap: 16px; }
   }
 
   .lnks .ximg { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 1.2em; }
