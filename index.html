@@ -38,7 +38,7 @@
   /* ---------- top menu: four equal columns, each label centred in its third ---------- */
   .nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(6, 1fr);
+    display: grid; grid-template-columns: repeat(4, 1fr);
     padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 22px;
     opacity: 0; transition: opacity 1.2s ease;
   }
@@ -46,11 +46,7 @@
   body:not([data-view="home"]) .nav { background: var(--white); }
   /* during a page change the menu bar is see-through, so the pixels fill in behind it too */
   body.washing .nav { background: transparent; }
-  .nav .email {
-    appearance: none; background: none; border: 0; cursor: pointer;
-    font-family: inherit; line-height: inherit;
-  }
-  .nav a, .nav .email {
+  .nav a {
     justify-self: center;
     color: var(--red); text-decoration: none;
     font-size: clamp(11px, 1.2vw, 13px); font-weight: 500;
@@ -58,8 +54,7 @@
     padding: 6px 8px; white-space: pre;
   }
   .nav a:hover, .nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 5px; }
-  .nav .email:hover { text-decoration: underline; text-underline-offset: 5px; }
-  .nav a:focus-visible, .nav .email:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
+  .nav a:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
 
   /* ---------- home: intro + logo ---------- */
   .stage { position: fixed; inset: 0; }
@@ -94,14 +89,6 @@
   .skip.show { opacity: 1; visibility: visible; }
   .skip:hover { color: var(--red); text-decoration: underline; text-underline-offset: 5px; }
   .skip:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
-  /* info page: Skip sits under [ What we do ] */
-  .info .col1 { display: grid; gap: 1.28em; justify-items: start; align-content: start; }
-  .info .skip {
-    position: static; transform: none;
-    font-size: 11px; font-weight: 500; letter-spacing: .14em;   /* same as Skip intro */
-    color: var(--red); padding: 0;
-  }
-
   /* ---------- info page (white) ---------- */
   .page {
     position: fixed; inset: 0; z-index: 5;
@@ -125,16 +112,11 @@
     row-gap: clamp(28px, 5.5vh, 72px);
     align-items: start;
   }
-  /* same look as the sponsor tiers: the selected heading is a red block with white text */
-  .info .tabs { display: grid; gap: 0; justify-items: start; margin: -.22em -.45em 0; }
-  .info .tab {
-    appearance: none; background: transparent; border: 0; padding: .22em .45em; margin: 0; border-radius: 0;
-    font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left;
-    white-space: pre; color: var(--ink); cursor: pointer;
-    transition: background-color .15s ease, color .15s ease;
+  /* section headings: red blocks, same look as the old selected tab */
+  .info .ihead {
+    margin: 0; font: inherit; letter-spacing: inherit; justify-self: start;
+    background: var(--red); color: var(--white); padding: .22em .45em; margin: -.22em -.45em 0;
   }
-  .info .tab[aria-current="true"] { background: var(--red); color: var(--white); cursor: default; }
-  .info .tab:not([aria-current="true"]):hover { color: var(--red); }
   /* meet the team: pixel portraits in a row, no boxes */
   .info .body.team { display: flex; flex-wrap: wrap; gap: clamp(24px, 3vw, 48px); max-width: none; align-items: start; }
   .info .member { margin: 0; display: grid; gap: .9em; justify-items: start; }
@@ -157,7 +139,6 @@
   .ilink .sq { width: .8em; height: .8em; background: var(--red); flex: none; }
   .ilink:hover span:last-child { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
   .ilink:focus-visible { outline: 1px solid var(--red); outline-offset: 3px; }
-  .info .tab:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   .info .body { display: grid; gap: 1.28em; max-width: 54ch; min-width: 0; }
   .info .welcome {
     grid-column: 2;
@@ -186,7 +167,6 @@
   @media (max-width: 700px) {
     /* phones: equal margins left and right so everything sits in the middle of the screen */
     .info { grid-template-columns: minmax(0, 1fr); row-gap: 32px; padding-inline: var(--x1, 16px); }
-    .info .skip:not(.show) { display: none; }
     .info .welcome { grid-column: 1; justify-self: center; font-size: min(calc((100vw - 2 * var(--x1, 16px) - 8px) / 10.5), 44px); }
   }
 
@@ -427,6 +407,44 @@
     .spons .logos { gap: 28px 32px; }
   }
 
+
+  /* ---------- sponsor strip: small logos drifting along the bottom of Info, Links and Directory ---------- */
+  /* pages with the strip are a column, so the strip sits at the bottom even when the page is short */
+  #info, #links, #graduates { display: flex; flex-direction: column; }
+  #info > :not(.sstrip), #links > :not(.sstrip), #graduates > :not(.sstrip) { flex: none; }
+  .sstrip {
+    margin-top: auto; flex: none;
+    display: flex; align-items: center; gap: clamp(16px, 3vw, 40px);
+    padding: 18px var(--x1, max(16px, 7vw)) calc(18px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #ececec;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: .14em;
+    font-size: 10px; font-weight: 500;
+  }
+  .sstrip > a { color: var(--ink); opacity: .55; text-decoration: none; white-space: nowrap; flex: none; }
+  .sstrip > a:hover { color: var(--red); opacity: 1; }
+  .sstrip .rail {
+    flex: 1; min-width: 0; overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .sstrip .track { display: flex; width: max-content; animation: sscroll var(--dur, 60s) linear infinite; }
+  .sstrip:hover .track, .sstrip:focus-within .track { animation-play-state: paused; }
+  .sstrip ul { list-style: none; margin: 0; padding: 0 clamp(32px, 4vw, 56px) 0 0; display: flex; align-items: center; gap: clamp(32px, 4vw, 56px); }
+  .sstrip li a { display: block; }
+  .sstrip img {
+    display: block; width: auto;
+    height: calc(22px * 1.3 / sqrt(var(--ar, 2)));
+    filter: grayscale(1); opacity: .5; transition: opacity .2s ease, filter .2s ease;
+  }
+  .sstrip li a:hover img, .sstrip li a:focus-visible img { filter: none; opacity: 1; }
+  .sstrip a:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
+  @keyframes sscroll { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .sstrip .track { animation: none; }
+    .sstrip .rail { overflow-x: auto; }
+  }
+  @media (max-width: 700px) { .sstrip { padding-inline: var(--x1, 16px); } }
+
   /* ---------- pixel scatter transition ---------- */
   #wash { position: fixed; inset: 0; z-index: 20; pointer-events: none; width: 100%; height: 100%; }
   #wash.fade { transition: opacity .6s ease; opacity: 0; }
@@ -437,7 +455,7 @@
   }
   @media (max-width: 440px) {
     .nav { padding-inline: 10px; }
-    .nav a, .nav .email { letter-spacing: .04em; padding-inline: 2px; font-size: min(10.5px, 2.75vw); }
+    .nav a { letter-spacing: .04em; padding-inline: 2px; font-size: min(10.5px, 2.75vw); }
   }
   @media (max-width: 600px) {
     .logo-wrap { width: calc(100vw - 32px); }
@@ -450,13 +468,10 @@
 <body data-view="home">
 <nav class="nav" id="nav" aria-label="Main menu">
   <a href="#home">Home</a>
-  <a href="#info">Info</a>
   <a href="#links">Links</a>
   <a href="#directory">Directory</a>
-  <button type="button" class="email" id="emailBtn" aria-describedby="emailStatus">Email us</button>
   <a href="#sponsors">Sponsors</a>
 </nav>
-<span class="sr-only" id="emailStatus" role="status" aria-live="polite"></span>
 
 <div class="stage" id="home">
   <div id="clusters"></div>
@@ -483,22 +498,20 @@
       <h2>Who we are</h2>
       <p>We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
-    <div class="col1">
-      <div class="tabs" role="group" aria-label="Info sections">
-        <button type="button" class="tab" data-tab="what" aria-current="true"><span data-type="16" data-pause="200">[ What we do ]</span></button>
-        <button type="button" class="tab" data-tab="who"><span data-type="16" data-pause="200">[ Who we are ]</span></button>
-        <button type="button" class="tab" data-tab="team"><span data-type="16" data-pause="600">[ Meet the team ]</span></button>
-      </div>
-      <button type="button" class="skip" id="infoSkip">Skip</button>
+    <h2 class="ihead" aria-hidden="true">[ What we do ]</h2>
+    <div class="body" aria-hidden="true">
+      <p>STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
+      <p>Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
+      <p>Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
+      <p>Together, these individual threads form a collective body of work.</p>
     </div>
-    <div class="body" data-panel="what" aria-hidden="true">
-      <p data-type="34" data-pause="600">STITCH is a theme of connection, assembly and transformation. As the inaugural graduate exhibition of Adelaide University, it marks a moment in which two universities, histories and communities have been stitched together to form something new.</p>
-      <p data-type="34" data-pause="600">Architecture is itself an act of stitching. We bring together old and new, structure and skin, landscape and building, public and private, permanence and change. Through these intersections, ideas are drawn together to create new possibilities.</p>
-      <p data-type="34" data-pause="600">Stitching as an act is performed by the hand: deliberate and tactile, made through a sequence of individual movements. In the same way, the work presented are the product of our graduates’ hands, ideas and countless acts of making, drawing, testing and reworking.</p>
-      <p data-type="30" data-pause="1000">Together, these individual threads form a collective body of work.</p>
+    <div class="welcome" aria-hidden="true">Welcome to STITCH</div>
+    <h2 class="ihead" aria-hidden="true">[ Who we are ]</h2>
+    <div class="body" aria-hidden="true">
+      <p>We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
-    <div class="welcome" data-panel="what" aria-hidden="true" data-type="7" data-pause="0">Welcome to STITCH</div>
-    <div class="body team" data-panel="team" hidden>
+    <h2 class="ihead">[ Meet the team ]</h2>
+    <div class="body team">
       <figure class="member">
         <svg class="portrait" data-portrait="jordan-pipkorn" role="img" aria-label="Pixel portrait of Jordan Pipkorn"></svg>
         <figcaption>Jordan Pipkorn</figcaption>
@@ -527,9 +540,6 @@
         <svg class="portrait" data-portrait="matthew-birchmore" role="img" aria-label="Pixel portrait of Matthew Birchmore"></svg>
         <figcaption>Matthew Birchmore</figcaption>
       </figure>
-    </div>
-    <div class="body" data-panel="who" aria-hidden="true" hidden>
-      <p data-type="34" data-pause="0">We are Adelaide University’s graduating class from across the architecture disciplines. This exhibition brings together Bachelor and Master work from architecture, interior architecture, landscape architecture, and urban and regional planning.</p>
     </div>
   </article>
 </main>
@@ -867,12 +877,7 @@
     });
   });
 
-  // ================= EMAIL US (copy to clipboard) =================
-  const EMAIL = "stitch.adl.archi@gmail.com";
-  const emailBtn = document.getElementById("emailBtn");
-  const emailStatus = document.getElementById("emailStatus");
-  let copiedTimer = null, copied = false;
-
+  // letters scramble into place (used for the team names)
   function scrambleTo(el, text) {
     clearInterval(el._scr);
     if (reduceMotion) { el.textContent = text; return; }
@@ -884,40 +889,6 @@
       if (fixed >= text.length) { clearInterval(el._scr); el.textContent = text; }
     }, 35);
   }
-
-  function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
-    return new Promise((resolve, reject) => {
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.setAttribute("readonly", "");
-      ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta); ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      ok ? resolve() : reject();
-    });
-  }
-
-  emailBtn.setAttribute("aria-label", "Copy email address " + EMAIL);
-  emailBtn.addEventListener("mouseenter", () => { if (!copied) scrambleTo(emailBtn, "Copy email"); });
-  emailBtn.addEventListener("mouseleave", () => { if (!copied) scrambleTo(emailBtn, "Email us"); });
-  emailBtn.addEventListener("click", () => {
-    copyText(EMAIL).then(() => {
-      copied = true;
-      scrambleTo(emailBtn, "Email copied");
-      emailStatus.textContent = "Email address copied: " + EMAIL;
-      clearTimeout(copiedTimer);
-      copiedTimer = setTimeout(() => {
-        copied = false;
-        scrambleTo(emailBtn, emailBtn.matches(":hover") ? "Copy email" : "Email us");
-      }, 2200);
-    }).catch(() => {
-      // copying was blocked: show the address so it can be copied by hand
-      copied = true;
-      scrambleTo(emailBtn, EMAIL);
-      emailStatus.textContent = EMAIL;
-    });
-  });
 
   // ================= INTRO =================
   const T_TEXT_START = 250, T_TEXT_STAGGER = 260, T_TEXT_BUILD = 1100, T_TEXT_HOLD = 450, T_TEXT_OUT = 380;
@@ -1100,71 +1071,6 @@
       requestAnimationFrame(() => { ctx.clearRect(0, 0, W, H); washing = false; document.body.classList.remove("washing"); });
     }
     requestAnimationFrame(draw);
-  }
-
-  // ================= TYPEWRITER (info page) =================
-  const caret = document.createElement("span");
-  caret.className = "caret";
-  // every typed element becomes a block; blocks are grouped into the two headings and each section
-  // headings are padded to the same length so their brackets line up: [ LINKS         ]
-  const tabLabels = [...infoText.querySelectorAll(".tab span")];
-  const inner = tabLabels.map(el => el.textContent.replace(/^\[\s*|\s*\]$/g, ""));
-  const widest = Math.max(...inner.map(t => t.length));
-  tabLabels.forEach((el, i) => el.textContent = "[ " + inner[i].padEnd(widest) + " ]");
-
-  const labelBlocks = [], panelBlocks = { what: [], who: [], team: [] };
-  infoText.querySelectorAll("[data-type]").forEach(el => {
-    const full = el.textContent;
-    const node = document.createTextNode("");
-    el.textContent = "";
-    el.appendChild(node);
-    const blk = { el, node, full, speed: +el.dataset.type, pause: +el.dataset.pause };
-    const panel = el.closest("[data-panel]");
-    (panel ? panelBlocks[panel.dataset.panel] : labelBlocks).push(blk);
-  });
-  const welcomeEl = infoText.querySelector(".welcome");
-  const infoSkip = document.getElementById("infoSkip");
-  let typeRaf = null, seq = [];
-
-  // Skip jumps to "Welcome to STITCH" when it is in the sequence, otherwise to the end
-  const skipIndex = blocks => { const i = blocks.findIndex(b => b.el === welcomeEl); return i < 0 ? blocks.length : i; };
-
-  function finishTyping() {
-    cancelAnimationFrame(typeRaf); typeRaf = null;
-    seq.forEach(b => b.node.data = b.full);
-    if (seq.length) seq[seq.length - 1].el.appendChild(caret);
-    infoSkip.classList.remove("show");
-  }
-
-  // type `blocks` in order from index `from`; earlier ones are shown in full
-  function runTyping(blocks, from = 0, firstWait = 450) {
-    cancelAnimationFrame(typeRaf);
-    seq = blocks;
-    const skipAt = skipIndex(blocks);
-    blocks.forEach((b, i) => b.node.data = i < from ? b.full : "");
-    blocks[from].el.appendChild(caret);
-    infoSkip.classList.toggle("show", from < skipAt && !reduceMotion);
-    if (reduceMotion) { finishTyping(); return; }
-    let bi = from, ci = 0, carry = 0, wait = firstWait, last = performance.now();
-    function tick(now) {
-      const dt = Math.min(now - last, 64); last = now;
-      if (wait > 0) { wait -= dt; typeRaf = requestAnimationFrame(tick); return; }
-      const b = blocks[bi];
-      carry += dt / 1000 * b.speed * (0.55 + Math.random() * 0.9);
-      const n = Math.floor(carry); carry -= n;
-      if (n > 0) {
-        ci = Math.min(b.full.length, ci + n);
-        b.node.data = b.full.slice(0, ci);
-      }
-      if (ci >= b.full.length) {
-        if (bi === blocks.length - 1) { typeRaf = null; infoSkip.classList.remove("show"); return; }
-        wait = b.pause; bi++; ci = 0; carry = 0;
-        blocks[bi].el.appendChild(caret);
-        if (bi >= skipAt) infoSkip.classList.remove("show");
-      }
-      typeRaf = requestAnimationFrame(tick);
-    }
-    typeRaf = requestAnimationFrame(tick);
   }
 
   // ---- Meet the team: pixel portraits, drawn cell by cell ("#" = black pixel)
@@ -1621,58 +1527,19 @@
     })(t0);
   }
 
-  // ---- sections: What we do / Who we are
-  const tabs = [...infoText.querySelectorAll(".tab")];
-  let currentTab = "what";
-  function setTab(name) {
-    currentTab = name;
-    tabs.forEach(t => t.setAttribute("aria-current", t.dataset.tab === name ? "true" : "false"));
-    infoText.querySelectorAll("[data-panel]").forEach(el => el.hidden = el.dataset.panel !== name);
-  }
-  // opening Info: type both headings, then What we do
-  function startTyping() {
-    setTab("what");
-    runTyping([...labelBlocks, ...panelBlocks.what]);
-  }
-  tabs.forEach(t => t.addEventListener("click", e => {
-    e.stopPropagation();
-    if (t.dataset.tab === currentTab) return;
-    labelBlocks.forEach(b => b.node.data = b.full);   // headings stay in full
-    setTab(t.dataset.tab);
-    info.scrollTop = 0;
-    if (t.dataset.tab === "team") revealPortraits();
-    const blocks = panelBlocks[t.dataset.tab];
-    if (!blocks.length) {
-      // nothing to type here (Meet the team): no blinking line, no Skip
-      cancelAnimationFrame(typeRaf); typeRaf = null; seq = [];
-      infoSkip.classList.remove("show");
-      caret.remove();
-      return;
-    }
-    runTyping(blocks, 0, 250);
-  }));
-
-  // line the info columns up with the HOME and INFO menu labels
+  // line the info columns up with the HOME and LINKS menu labels
   const homeLink = nav.querySelector('a[href="#home"]');
-  const infoLink = nav.querySelector('a[href="#info"]');
+  const infoLink = nav.querySelector('a[href="#links"]');
   function alignInfo() {
     const textLeft = el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft);
     const x1 = Math.round(textLeft(homeLink)), x2 = Math.round(textLeft(infoLink));
-    [infoText, document.getElementById("sponsText"), document.getElementById("linksText"), document.getElementById("gradText")].forEach(el => {
+    [infoText, document.getElementById("sponsText"), document.getElementById("linksText"), document.getElementById("gradText"), ...strips].forEach(el => {
       el.style.setProperty("--x1", x1 + "px");
       el.style.setProperty("--c1", (x2 - x1) + "px");
     });
   }
   window.addEventListener("resize", alignInfo);
 
-  // click anywhere on the info page to skip to the end
-  info.addEventListener("click", e => { if (typeRaf) finishTyping(); });
-  // Skip: show the text at once, then type "Welcome to STITCH" as normal (if it is part of this section)
-  infoSkip.addEventListener("click", e => {
-    e.stopPropagation();
-    const k = skipIndex(seq);
-    if (k >= seq.length) finishTyping(); else runTyping(seq, k, 250);
-  });
 
   // ================= SPONSORS =================
   // page titles type out together when a page opens, each with its own caret
@@ -2331,6 +2198,41 @@
   const pageOf = h => h.replace(/^#/, "").split("/")[0];
   const slugIn = h => decodeURIComponent(h.replace(/^#/, "").split("/").slice(1).join("/"));
 
+
+  // ================= SPONSOR STRIP =================
+  // the sponsor logos, in tier order, drift along the bottom of Info, Links and Directory
+  const strips = [];
+  (function buildStrips() {
+    const src = [...document.querySelectorAll("#sponsText .logos a")].filter(a => a.querySelector("img"));
+    if (!src.length) return;
+    const makeList = hidden => {
+      const ul = document.createElement("ul");
+      if (hidden) ul.setAttribute("aria-hidden", "true");
+      src.forEach(a => {
+        const li = document.createElement("li");
+        const link = a.cloneNode(true);
+        if (hidden) link.tabIndex = -1;
+        const img = link.querySelector("img");
+        img.loading = "lazy";
+        const set = () => img.naturalWidth && img.style.setProperty("--ar", (img.naturalWidth / img.naturalHeight).toFixed(3));
+        img.complete ? set() : img.addEventListener("load", set);
+        li.appendChild(link); ul.appendChild(li);
+      });
+      return ul;
+    };
+    ["info", "links", "graduates"].forEach(id => {
+      const strip = document.createElement("aside");
+      strip.className = "sstrip";
+      strip.setAttribute("aria-label", "Our sponsors");
+      strip.innerHTML = '<a href="#sponsors">Sponsors</a><div class="rail"><div class="track"></div></div>';
+      const track = strip.querySelector(".track");
+      track.style.setProperty("--dur", src.length * 3.5 + "s");
+      track.append(makeList(false), makeList(true));
+      document.getElementById(id).appendChild(strip);
+      strips.push(strip);
+    });
+  })();
+
   // ================= ROUTING =================
   const PAGES = {
     info:     { el: info, color: "#ffffff" },
@@ -2347,19 +2249,54 @@
     });
   }
 
+
+  // ================= HOME -> INFO BY SCROLLING =================
+  // once STITCH has come up, scrolling down on Home brings in Info (white pixels);
+  // scrolling up at the very top of Info goes back to Home with STITCH at rest
+  let homeAtRest = false, infoEnteredAt = 0, homeEnteredAt = 0;
+  const SETTLE = 900;   // ignore leftover trackpad momentum just after a page change
+  function goInfo() {
+    if (current !== "home" || washing || !nav.classList.contains("show")) return;
+    if (performance.now() - homeEnteredAt < SETTLE) return;
+    location.hash = "#info";
+  }
+  function goHome() {
+    if (current !== "info" || washing || info.scrollTop > 0) return;
+    if (performance.now() - infoEnteredAt < SETTLE) return;
+    homeAtRest = true;
+    location.hash = "#home";
+  }
+  window.addEventListener("wheel", e => {
+    if (e.deltaY > 4) goInfo();
+    else if (e.deltaY < -4) goHome();
+  }, { passive: true });
+  let touchY = null, touchTop = 0;
+  window.addEventListener("touchstart", e => { touchY = e.touches[0].clientY; touchTop = info.scrollTop; }, { passive: true });
+  window.addEventListener("touchend", e => {
+    if (touchY === null) return;
+    const dy = touchY - e.changedTouches[0].clientY; touchY = null;
+    if (dy > 40) goInfo();
+    else if (dy < -60 && touchTop <= 0) goHome();
+  }, { passive: true });
+  window.addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("input, textarea, select, button, a")) return;
+    if (["ArrowDown", "PageDown", " "].includes(e.key) && current === "home") { e.preventDefault(); goInfo(); }
+    if (["ArrowUp", "PageUp"].includes(e.key) && current === "info" && info.scrollTop <= 0) goHome();
+  });
+
   function setView(name) {
     current = name;
     document.body.dataset.view = name;
     document.querySelector('meta[name="theme-color"]').content = name === "home" ? "#000000" : "#ffffff";
     markNav(name);
     Object.entries(PAGES).forEach(([key, pg]) => { pg.el.hidden = key !== name; });
-    if (name !== "info") { cancelAnimationFrame(typeRaf); typeRaf = null; }
     home.hidden = name !== "home";
     if (name !== "home") { clearTimeout(cycleTimer); cancelAnimationFrame(raf); raf = null; skipBtn.classList.remove("show"); }
-    if (name === "home") playIntro();
+    if (name === "home") homeEnteredAt = performance.now();
+    if (name === "home") { if (homeAtRest) { homeAtRest = false; showLogoAtRest(); skipBtn.classList.remove("show"); scheduleReplay(); } else playIntro(); }
     else {
       PAGES[name].el.scrollTop = 0;
-      if (name === "info") { alignInfo(); startTyping(); }
+      if (name === "info") { alignInfo(); revealPortraits(); infoEnteredAt = performance.now(); }
       if (name === "sponsors") { alignInfo(); typeSponsorTitles(); }
       if (name === "links") { alignInfo(); typeLinks(); }
       if (name === "directory") { alignInfo(); typeDirectory(); loadGraduates().then(() => showGraduate(slugIn(location.hash))); }
