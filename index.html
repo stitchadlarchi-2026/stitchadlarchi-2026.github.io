@@ -243,7 +243,8 @@
   .grads .gtitle { margin: .9em 0 -.3em; font: inherit; font-weight: 500; color: var(--red); letter-spacing: .03em; line-height: 1.35; }
   .grads .gtitle:empty { display: none; }
   .grads .gov { margin: .4em 0 0; text-transform: none; letter-spacing: 0; line-height: 1.6; white-space: pre-line; }
-  .grads .gproj { display: block; margin-top: clamp(28px, 5vh, 56px); }
+  .grads .gprojs { display: grid; gap: clamp(20px, 3vh, 36px); margin-top: clamp(28px, 5vh, 56px); }
+  .grads .gproj { display: block; }
   .grads .gproj img { display: block; width: 100%; height: auto; max-height: 90vh; object-fit: contain; object-position: left top; background: #f7f7f7; }
   .grads .gproj:focus-visible { outline: 1px solid var(--red); outline-offset: 4px; }
   @media (max-width: 700px) {
@@ -253,6 +254,13 @@
     .grads .gphoto { max-width: 300px; }
   }
 
+  .lnks .ximg { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 1.2em; }
+  .lnks .ximg + .ximg { margin-top: .6em; }
+  .lnks .ximg .xhint, .lnks .ximg .xerr { flex-basis: 100%; }
+  .lnks .ximg .xhint:empty, .lnks .ximg .xerr:empty { display: none; }
+  .lnks .xclear { appearance: none; background: none; border: 0; padding: 0; font: inherit; font-size: .8em; letter-spacing: .04em; text-transform: uppercase; color: #888; cursor: pointer; }
+  .lnks .xclear:hover { color: var(--red); }
+  .lnks .xclear:focus-visible { outline: 1px solid var(--red); outline-offset: 2px; }
   /* ---------- links page: Exhibition drop-down with the submission form ---------- */
   .lnks .xhb { display: grid; justify-items: start; width: 100%; }
   .lnks .xdrop {
@@ -601,7 +609,7 @@
                   <label class="xcheck"><input type="radio" name="directory" value="yes"><span>Yes</span></label>
                   <label class="xcheck"><input type="radio" name="directory" value="no"><span>No</span></label>
                 </div>
-                <p class="xhint" id="xDirectoryHint">Your headshot, name, degree, links, project title, overview and poster appear on this site’s <a href="#directory">Student Directory</a> once the committee has checked them.</p>
+                <p class="xhint" id="xDirectoryHint">Your headshot, name, degree, links, project title, overview and project images appear on this site’s <a href="#directory">Student Directory</a> once the committee has checked them.</p>
                 <p class="xerr" id="xDirectoryErr" aria-live="polite"></p>
               </fieldset>
               <p class="xnote" id="xDirOnly" hidden aria-live="polite">You’re not exhibiting, so your details go to the Student Directory only. They won’t appear in the exhibition itself.</p>
@@ -652,12 +660,29 @@
                   <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
                 </div>
                 <div class="xfield">
-                  <span class="xlabel" id="xPosterLabel">Your project poster <span class="req" aria-hidden="true">*</span></span>
-                  <input id="xPoster" name="poster" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel" aria-describedby="xPosterHint xPosterName xPosterErr">
-                  <label for="xPoster" class="xfile">[ Choose poster ]</label>
-                  <p class="xhint" id="xPosterHint">Export your poster as a PNG at A1 size and at least 150 DPI: at least 3508 × 4967 pixels, portrait or landscape. Up to 250 MB.</p>
-                  <p class="xhint" id="xPosterName"></p>
-                  <p class="xerr" id="xPosterErr" aria-live="polite"></p>
+                  <span class="xlabel" id="xPosterLabel">Project images <span class="opt">(optional)</span></span>
+                  <p class="xhint" id="xPosterHint">Up to three images of your project: a poster, drawings, renders, models, anything. Each must be a PNG at 150 DPI or more, up to 250 MB.</p>
+                  <div class="ximg">
+                    <input id="xPoster" name="poster" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel xPosterBtn" aria-describedby="xPosterHint xPosterName xPosterErr">
+                    <label for="xPoster" class="xfile" id="xPosterBtn">[ Choose image 1 ]</label>
+                    <button type="button" class="xclear" id="xPosterClear" hidden aria-label="Remove image 1">Remove</button>
+                    <p class="xhint" id="xPosterName"></p>
+                    <p class="xerr" id="xPosterErr" aria-live="polite"></p>
+                  </div>
+                  <div class="ximg">
+                    <input id="xPoster2" name="poster2" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel xPoster2Btn" aria-describedby="xPosterHint xPoster2Name xPoster2Err">
+                    <label for="xPoster2" class="xfile" id="xPoster2Btn">[ Choose image 2 ]</label>
+                    <button type="button" class="xclear" id="xPoster2Clear" hidden aria-label="Remove image 2">Remove</button>
+                    <p class="xhint" id="xPoster2Name"></p>
+                    <p class="xerr" id="xPoster2Err" aria-live="polite"></p>
+                  </div>
+                  <div class="ximg">
+                    <input id="xPoster3" name="poster3" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel xPoster3Btn" aria-describedby="xPosterHint xPoster3Name xPoster3Err">
+                    <label for="xPoster3" class="xfile" id="xPoster3Btn">[ Choose image 3 ]</label>
+                    <button type="button" class="xclear" id="xPoster3Clear" hidden aria-label="Remove image 3">Remove</button>
+                    <p class="xhint" id="xPoster3Name"></p>
+                    <p class="xerr" id="xPoster3Err" aria-live="polite"></p>
+                  </div>
                 </div>
                 <div class="xfield">
                   <label for="xLinkedin">LinkedIn <span class="opt">(optional)</span></label>
@@ -681,7 +706,7 @@
                 </div>
                 <div class="xfield xnotice" id="xNotice">
                   <p class="xlabel">How we use your details</p>
-                  <p class="xhint">The STITCH committee collects your name, personal email, your answers, degree, headshot, project title and overview, and poster, and your LinkedIn, Instagram, portfolio website and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue if you exhibit, on stitchexhibition.com, and on STITCH’s social media. Your email is only for the committee to contact you, and is never published.</p>
+                  <p class="xhint">The STITCH committee collects your name, personal email, your answers, degree, headshot, project title and overview, and project images, and your LinkedIn, Instagram, portfolio website and where you’re from if you give them. We use them on the exhibition’s wall labels and catalogue if you exhibit, on stitchexhibition.com, and on STITCH’s social media. Your email is only for the committee to contact you, and is never published.</p>
                   <label class="xcheck" for="xConsent">
                     <input id="xConsent" name="consent" type="checkbox" value="yes" aria-describedby="xNotice xConsentErr">
                     <span>I agree to STITCH using my details as described above. <span class="req" aria-hidden="true">*</span></span>
@@ -753,7 +778,7 @@
           <p class="gov" id="gpOverview"></p>
         </div>
       </div>
-      <a class="gproj" id="gpProject" target="_blank" rel="noopener" hidden aria-label="Open the poster full size (opens in a new tab)"><img id="gpProjectImg" alt=""></a>
+      <div class="gprojs" id="gpProjects" hidden></div>
     </article>
   </section>
 </main>
@@ -1635,7 +1660,7 @@
     });
     const fields = {
       name: "xName", email: "xEmail", exhibit: "xExhibit", directory: "xDirectory", degree: "xDegree", title: "xTitle", overview: "xOverview",
-      photo: "xPhoto", poster: "xPoster", linkedin: "xLinkedin", instagram: "xInstagram", website: "xSite", consent: "xConsent",
+      photo: "xPhoto", poster: "xPoster", poster2: "xPoster2", poster3: "xPoster3", linkedin: "xLinkedin", instagram: "xInstagram", website: "xSite", consent: "xConsent",
     };
 
     // The two questions decide what else is asked. Yes to either: everything.
@@ -1653,38 +1678,60 @@
       answered();
     }));
 
-    // The poster. Pixels are what print, so its pixel size is read from the
-    // PNG header here and checked again by the server. Keep in step with server.mjs.
+    // Project images, up to three, all optional. Each is a PNG at 150 DPI or
+    // more, read from the file's pHYs chunk here and checked again by the server.
+    // Keep in step with server.mjs.
     const MB = 1024 * 1024;
-    const POSTER = { maxMB: 250, short: 3508, long: 4967 };
+    const IMG = { maxMB: 250, minDpi: 150 };
     const TILE = { w: 600, h: 800 };
+    const IMAGES = [["poster", "xPoster", "posterWeb"], ["poster2", "xPoster2", "posterWeb2"], ["poster3", "xPoster3", "posterWeb3"]];
     const sizeText = n => n >= 1024 * MB ? (n / 1024 / MB).toFixed(2) + " GB" : (n / MB).toFixed(1) + " MB";
-    let posterCheck = Promise.resolve({ problem: "Please attach your poster." });
-    async function pngSize(file) {
-      const b = new Uint8Array(await file.slice(0, 24).arrayBuffer());
-      const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-      if (b.length < 24 || sig.some((v, i) => b[i] !== v) || String.fromCharCode(...b.slice(12, 16)) !== "IHDR") return null;
-      const v = new DataView(b.buffer);
-      return { w: v.getUint32(16), h: v.getUint32(20) };
-    }
-    async function checkPoster(f) {
-      if (!f) return { problem: "Please attach your poster." };
-      if (f.size === 0) return { problem: "That file is empty." };
-      const d = await pngSize(f).catch(() => null);
-      if (!d) return { problem: "Your poster must be a PNG. Please export it from your design program as a PNG." };
-      if (f.size > POSTER.maxMB * MB) return { problem: "That poster is too big. The limit is " + POSTER.maxMB + " MB. Try exporting the PNG again with compression on." };
-      if (Math.min(d.w, d.h) < POSTER.short || Math.max(d.w, d.h) < POSTER.long) {
-        return { problem: "That poster is " + d.w + " × " + d.h + " pixels, too small to print. Please export it again as a PNG at a higher resolution: at least " + POSTER.short + " × " + POSTER.long + " pixels (A1 at 150 DPI).", d };
+    // a PNG's size and DPI; dpi null when the file records none
+    async function pngInfo(file) {
+      for (const n of [64 * 1024, 4 * MB]) {
+        const b = new Uint8Array(await file.slice(0, n).arrayBuffer());
+        const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        if (b.length < 24 || sig.some((v, i) => b[i] !== v) || String.fromCharCode(...b.slice(12, 16)) !== "IHDR") return null;
+        const v = new DataView(b.buffer);
+        const out = { w: v.getUint32(16), h: v.getUint32(20), dpi: null };
+        let i = 8, reached = false;
+        while (i + 8 <= b.length) {
+          const len = v.getUint32(i), type = String.fromCharCode(...b.slice(i + 4, i + 8));
+          if (type === "IDAT" || type === "IEND") { reached = true; break; }
+          if (type === "pHYs" && i + 17 <= b.length) {
+            if (b[i + 16] === 1) out.dpi = Math.min(v.getUint32(i + 8), v.getUint32(i + 12)) * 0.0254;
+            reached = true; break;
+          }
+          i += 12 + len;
+        }
+        if (reached || b.length >= file.size) return out;
       }
+      return null;
+    }
+    async function checkImage(f) {
+      if (!f) return { problem: "" };
+      if (f.size === 0) return { problem: "That file is empty." };
+      const d = await pngInfo(f).catch(() => null);
+      if (!d) return { problem: "Project images must be PNGs. Please export it from your design program as a PNG." };
+      if (f.size > IMG.maxMB * MB) return { problem: "That image is too big. The limit is " + IMG.maxMB + " MB. Try exporting the PNG again with compression on." };
+      if (!d.dpi) return { problem: "That image has no DPI recorded. Please export it again as a PNG at " + IMG.minDpi + " DPI or more.", d };
+      if (d.dpi < IMG.minDpi - 0.5) return { problem: "That image is " + Math.round(d.dpi) + " DPI. Please export it again as a PNG at " + IMG.minDpi + " DPI or more.", d };
       return { problem: "", d };
     }
-    const posterIn = $("xPoster");
-    posterIn.addEventListener("change", () => {
-      const f = posterIn.files[0];
-      $("xPosterName").textContent = f ? f.name + " (" + sizeText(f.size) + ")" : "";
-      showError("poster", "");
-      posterCheck = checkPoster(f);
-      posterCheck.then(c => { if (posterIn.files[0] === f) { showError("poster", f ? c.problem : ""); if (c.d && !c.problem) $("xPosterName").textContent += ", " + c.d.w + " × " + c.d.h + " px"; } });
+    const imageChecks = {};
+    IMAGES.forEach(([key, id]) => {
+      const input = $(id), clear = $(id + "Clear");
+      imageChecks[key] = Promise.resolve({ problem: "" });
+      const update = () => {
+        const f = input.files[0];
+        $(id + "Name").textContent = f ? f.name + " (" + sizeText(f.size) + ")" : "";
+        clear.hidden = !f;
+        showError(key, "");
+        const c = imageChecks[key] = checkImage(f);
+        c.then(r => { if (input.files[0] === f) { showError(key, f ? r.problem : ""); if (r.d && !r.problem) $(id + "Name").textContent += ", " + r.d.w + " × " + r.d.h + " px, " + Math.round(r.d.dpi) + " DPI"; } });
+      };
+      input.addEventListener("change", update);
+      clear.addEventListener("click", () => { input.value = ""; update(); $(id + "Btn").focus(); });
     });
 
     // The headshot: cropped here to a 600 × 800 portrait tile and turned black
@@ -1832,7 +1879,7 @@
     form.consent.addEventListener("change", () => { if (form.consent.checked) showError("consent", ""); });
     // A field's error goes as soon as the person changes that field.
     const keyOf = Object.fromEntries(Object.entries(fields).map(([k, id]) => [id, k]));
-    form.addEventListener("input", e => { const k = keyOf[e.target.id]; if (k && k !== "photo" && k !== "poster") showError(k, ""); });
+    form.addEventListener("input", e => { const k = keyOf[e.target.id]; if (k && k !== "photo" && !k.startsWith("poster")) showError(k, ""); });
 
     function showError(key, msg) {
       const input = $(fields[key]);
@@ -1856,8 +1903,7 @@
       if (overview.value.trim().length < 20) errs.overview = "Please write a short overview of your project.";
       else if (words(overview.value) > MAX_WORDS) errs.overview = "Please keep it to " + MAX_WORDS + " words or fewer.";
       if (!tile) errs.photo = "Please add your headshot.";
-      const pc = await posterCheck;
-      if (pc.problem) errs.poster = pc.problem;
+      for (const [key] of IMAGES) { const c = await imageChecks[key]; if (c.problem) errs[key] = c.problem; }
       const li = form.linkedin.value.trim();
       if (li && !/linkedin\.com/i.test(li)) errs.linkedin = "That does not look like a LinkedIn link.";
       const ig = form.instagram.value.trim();
@@ -1905,9 +1951,9 @@
       });
     }
 
-    // The poster's web copy for the Student Directory, so the site never serves
+    // Each image's web copy for the Student Directory, so the site never serves
     // a 200 MB PNG. Decoded straight to the small size where the browser can,
-    // which spares a phone the full poster in memory. None if it cannot.
+    // which spares a phone the full image in memory. None if it cannot.
     async function webCopy(file, d, maxEdge, quality) {
       try {
         const k = Math.min(1, maxEdge / Math.max(d.w, d.h));
@@ -1964,7 +2010,7 @@
 
     let uploading = false;
     window.addEventListener("beforeunload", e => { if (uploading) { e.preventDefault(); e.returnValue = ""; } });
-    const LABEL = { photo: "Headshot", poster: "Poster" };
+    const LABEL = { photo: "Headshot", poster: "Image 1", poster2: "Image 2", poster3: "Image 3" };
 
     function showDone(names, { ex, dir }) {
       const first = form.name.value.trim().split(/\s+/)[0];
@@ -2015,11 +2061,15 @@
         const files = {};
         if (want) {
           files.photo = new File([tile.blob], "headshot.jpg", { type: "image/jpeg" });
-          files.poster = posterIn.files[0];
-          if (ans.dir) {
-            progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Preparing your poster for the Student Directory…";
-            const pw = await webCopy(files.poster, (await posterCheck).d, 2400, 0.88);
-            if (pw) files.posterWeb = new File([pw], "poster-web.jpg", { type: "image/jpeg" });
+          for (const [key, id, web] of IMAGES) {
+            const f = $(id).files[0];
+            if (!f) continue;
+            files[key] = f;
+            if (ans.dir) {
+              progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Preparing your images for the Student Directory…";
+              const pw = await webCopy(f, (await imageChecks[key]).d, 2400, 0.88);
+              if (pw) files[web] = new File([pw], web + ".jpg", { type: "image/jpeg" });
+            }
           }
           progress.hidden = false; barFill.style.width = "0%"; progressText.textContent = "Starting…";
         }
@@ -2079,8 +2129,7 @@
       crop.bmp?.close?.(); crop.bmp = null;
       $("xTile").hidden = true;
       $("xPhotoName").textContent = photoHint;
-      $("xPosterName").textContent = "";
-      posterCheck = checkPoster(null);
+      IMAGES.forEach(([key, id]) => { $(id + "Name").textContent = ""; $(id + "Clear").hidden = true; imageChecks[key] = checkImage(null); });
       answered();
       done.hidden = true; form.hidden = false;
       form.name.focus();
@@ -2192,13 +2241,18 @@
     }
     document.getElementById("gpTitle").textContent = g.title || "";
     document.getElementById("gpOverview").textContent = g.overview;
-    const proj = document.getElementById("gpProject");
-    const poster = g.poster;
-    proj.hidden = !(poster && poster.kind === "image");
-    if (poster && poster.kind === "image") {
-      proj.href = poster.url;
-      const pi = document.getElementById("gpProjectImg"); pi.src = poster.url; pi.alt = g.name + ", project poster";
-    }
+    // project images: up to three web copies (an older entry has a single "poster")
+    const imgs = (Array.isArray(g.images) ? g.images : g.poster ? [g.poster] : [])
+      .filter(m => m && m.kind === "image" && typeof m.url === "string" && m.url.startsWith("/_s/media/"));
+    const projs = document.getElementById("gpProjects");
+    projs.replaceChildren(...imgs.map((m, i) => {
+      const a = document.createElement("a");
+      a.className = "gproj"; a.href = m.url; a.target = "_blank"; a.rel = "noopener";
+      a.setAttribute("aria-label", "Open project image " + (i + 1) + " full size (opens in a new tab)");
+      const im = document.createElement("img"); im.src = m.url; im.alt = g.name + ", project image " + (i + 1);
+      a.append(im); return a;
+    }));
+    projs.hidden = !imgs.length;
     document.title = g.name + " - STITCH";
     document.getElementById("graduates").scrollTop = 0;
     gradProfile.focus({ preventScroll: true });

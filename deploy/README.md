@@ -34,7 +34,7 @@ GitHub credential that can write here. The server pulls; GitHub never pushes.
 | `compose.yaml` | The stack: `web` (nginx) + `usage` (view and click counters) + `submissions` (the exhibition form, with the R2 bucket `stitch-uploads`) + `cloudflared` (this app's own tunnel). Compose project `stitch-exhibition` |
 | `deploy/nginx.conf` | Security headers, gzip, cache policy, the `www` → apex redirect, and the usage beacon |
 | `deploy/usage/` | The usage counters. `beacon.js` is added to every page by nginx as it serves it, so `index.html` never carries it. It sends one word per page view or click: no cookie, no storage, no identifier. `server.mjs` counts the words and serves the totals on `127.0.0.1:9094` for the monitoring page. If it is down, the page is unaffected |
-| `deploy/submissions/` | The exhibition form on the Links page: each graduate's name, email and two yes/no questions, then (on a yes) their details, a headshot tile and a PNG poster. The files go from the browser straight to the R2 bucket `stitch-uploads`; `server.mjs` signs the upload URLs, checks what arrived, and copies it down to this box. `r2.mjs` talks to R2, `zip.mjs` builds the committee's downloads, `metadata.mjs` strips image metadata. `dev.mjs` runs the site and the form locally. See *Exhibition submissions* below |
+| `deploy/submissions/` | The exhibition form on the Links page: each graduate's name, email and two yes/no questions, then (on a yes) their details, a headshot tile and up to three optional PNG project images. The files go from the browser straight to the R2 bucket `stitch-uploads`; `server.mjs` signs the upload URLs, checks what arrived, and copies it down to this box. `r2.mjs` talks to R2, `zip.mjs` builds the committee's downloads, `metadata.mjs` strips image metadata. `dev.mjs` runs the site and the form locally. See *Exhibition submissions* below |
 | `deploy/provision-tunnel.sh` | Creates or reuses the Cloudflare tunnel and DNS. Idempotent; safe to re-run |
 | `.env.example` | The variable names. The real `.env` lives only on the server and is gitignored |
 
@@ -86,7 +86,7 @@ Graduates fill in the form under **Links → Exhibition**: their name and
 personal email, then two yes/no questions: will they exhibit on the night, and
 do they want to be in the Student Directory. A yes to either asks for the rest:
 degree, project title and overview, optional LinkedIn, Instagram, website and
-place of origin, a headshot and a PNG poster. No to both submits the name,
+place of origin, a headshot and up to three PNG project images (optional). No to both submits the name,
 email and answers alone, stored at once with no upload. The decisions behind
 every limit are in `SECURITY.md`; the load test behind them is in
 `deploy/submissions/LOADTEST.md`.
@@ -111,16 +111,17 @@ picks the queue up where it stopped.
 
 - **Files:** the headshot is cropped in the browser (a crop window to move
   and zoom it) to a 600 x 800 black-and-white JPEG tile, and only the tile is
-  sent; the service refuses any other size. The poster is PNG only, up to
-  250 MB, and at least 3508 x 4967 px either way up (A1 at 150 DPI): the
-  browser reads the PNG header before uploading and the service reads it again
-  in R2. To change the minimum, change `POSTER_MIN` in `server.mjs` and
-  `POSTER` in `index.html` together. Types are checked twice: as declared at
+  sent; the service refuses any other size. Project images (kinds `poster`,
+  `poster2`, `poster3`, all optional) are PNG only, up to 250 MB each, at
+  150 DPI or more as recorded in the PNG's `pHYs` chunk (no pixel minimum; a
+  PNG with no DPI is refused): the browser reads it before uploading and the
+  service reads it again in R2. To change the rule, change `MIN_DPI` in
+  `server.mjs` and `IMG` in `index.html` together. Types are checked twice: as declared at
   start, and by each file's real first bytes in R2 at complete. Image metadata
-  (location, camera, text) is removed before anything is kept; the poster is
+  (location, camera, text) is removed before anything is kept; each project image is
   stripped as it streams, never held in memory. There is no booklet.
 - **Where it lands:** records and headshots on `submissions-data` (backed up
-  nightly by `nch-backup-all`); posters on `submissions-files`.
+  nightly by `nch-backup-all`); project images on `submissions-files`.
   Every object stays in R2 as well, as the off-box copy of the big files, until
   the deletion date.
 - **Limits:** 120 starts or completes a minute per address (a class on campus
@@ -142,7 +143,7 @@ picks the queue up where it stopped.
 ```bash
 # the committee's downloads, from anywhere (any username, the key as password)
 https://stitchexhibition.com/_s/export            # submissions.xlsx + photos/<Full Name>.jpg
-https://stitchexhibition.com/_s/export/posters    # posters/<Full Name>.png   (large)
+https://stitchexhibition.com/_s/export/posters    # images/<Full Name>.png, <Full Name> 2.png, 3.png (large)
 https://stitchexhibition.com/_s/status            # headcount, the queue, anything flagged
 
 # the queue, from the box
@@ -165,16 +166,16 @@ it could not send.
 ### Student Directory
 
 Graduates who answer yes to the Student Directory also upload a small JPEG
-web copy of their poster (kind `posterWeb`, optional, through the same
+web copy of each project image (kinds `posterWeb`, `posterWeb2`, `posterWeb3`, optional, through the same
 `/start` → R2 → transfer path); the headshot tile is served as it is. Nothing
 is public until the committee approves it at `https://stitchexhibition.com/_s/review`
 (same password as the downloads). The page lists everyone as waiting, live,
 hidden or not in the directory, with Approve and Hide; decisions go to
 `/data/approvals.state`. The Directory page reads `/_s/directory.json`, the
-images come from `/_s/media/<id>/(photo|posterWeb).jpg` (Cloudflare caches them
+images come from `/_s/media/<id>/(photo|posterWeb|posterWeb2|posterWeb3).jpg` (Cloudflare caches them
 for up to five minutes, so a hidden profile's images are gone within five
 minutes). Profiles show LinkedIn, Instagram and website links; email, place of
-origin and the poster PNG are never public. The sheet has "Personal email",
+origin and the image PNGs are never public. The sheet has "Personal email",
 "Exhibiting", "Asked for directory" and "Directory" columns, and lists people
 who said no to both with their name and email only.
 

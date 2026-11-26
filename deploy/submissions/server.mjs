@@ -6,7 +6,8 @@
  * Student Directory. Someone who answers no to both sends nothing else, and
  * their record is stored at once. Anyone else sends their details and two
  * files: a 600 x 800 black-and-white headshot tile, cropped in their browser,
- * and a PNG poster at print resolution. A poster runs to hundreds of
+ * and, if they like, up to three PNG project images (a poster, drawings,
+ * renders, anything) at 150 DPI or more. An image runs to hundreds of
  * megabytes, and stitchexhibition.com sits behind a Cloudflare plan that
  * refuses any request body over 100 MB and behind a home connection, so the
  * files never come through here at all:
@@ -32,18 +33,18 @@
  * as the off-box copy.
  *
  * The Student Directory. A graduate who answers yes to the directory has
- * their browser send a small JPEG web copy of the poster beside the PNG; the
+ * their browser send a small JPEG web copy of each project image beside its PNG; the
  * headshot tile is already small. Nothing is shown until the committee
  * approves it on the review page; a resubmission waits for approval while the
  * earlier approved profile stays up, and one that answers no takes the
- * profile down at once. The directory serves only the tile and the web copy,
- * never the poster PNG, the email or "where from", and it empties with
+ * profile down at once. The directory serves only the tile and the web copies,
+ * never the image PNGs, the email or "where from", and it empties with
  * everything else on the deletion date.
  *
  * Two servers, two ports:
  *   FORM_PORT   POST /start, /complete              nginx, from the public site
  *               GET  /directory.json, /media/<id>/<kind>
- *   ADMIN_PORT  GET  /export[/posters],             nginx, behind SUBMISSIONS_KEY
+ *   ADMIN_PORT  GET  /export[/posters] (all images), nginx, behind SUBMISSIONS_KEY
  *                    /status, /review, /review/media/<id>/<kind>
  *               POST /review/<id>/(approve|hide)
  *               GET  /health                        (healthcheck, local only)
@@ -87,12 +88,13 @@ const r2 = process.env.R2_BUCKET
 
 const MB = 1024 * 1024;
 /**
- * The poster's smallest pixel size, either way up: A1 (594 x 841 mm) at
- * 150 DPI. Pixels are what print; a DPI number in the file's metadata is not
- * checked, because any export can claim any number. Keep in step with
- * index.html.
+ * A project image's smallest resolution, read from the PNG's pHYs chunk. An
+ * image may be anything (a poster, a drawing, a render), so no pixel size is
+ * set; the DPI the file declares is the rule the committee asked for. A PNG
+ * with no DPI recorded is refused. 149.5 allows for 150 DPI stored as a whole
+ * number of pixels per metre (5905 or 5906). Keep in step with index.html.
  */
-const POSTER_MIN = { short: 3508, long: 4967 };
+const MIN_DPI = 150;
 /** The headshot tile the browser crops to: portrait, black and white. Keep in step with index.html. */
 const TILE = { width: 600, height: 800 };
 /**
@@ -102,15 +104,26 @@ const TILE = { width: 600, height: 800 };
  */
 const KINDS = {
   photo: { label: 'headshot', dir: DATA, types: { jpg: 4 * MB } },
-  poster: { label: 'poster', dir: FILES, types: { png: 250 * MB } },
-  // A web copy the browser makes for the Student Directory, only for someone
-  // who wants to be in it. Optional: a browser that cannot make one sends none.
-  posterWeb: { label: 'web poster', dir: DATA, types: { jpg: 8 * MB }, optional: true },
+  // Project images, up to three, all optional ("extra"): each is checked the
+  // same way when sent, and nothing is asked if it is not.
+  // (Kept under the name "poster" so earlier records and paths still work.)
+  poster: { label: 'project image', dir: FILES, types: { png: 250 * MB }, image: true, extra: true, suffix: '' },
+  poster2: { label: 'second project image', dir: FILES, types: { png: 250 * MB }, image: true, extra: true, suffix: ' 2' },
+  poster3: { label: 'third project image', dir: FILES, types: { png: 250 * MB }, image: true, extra: true, suffix: ' 3' },
+  // A web copy of each image the browser makes for the Student Directory, only
+  // for someone who wants to be in it. Optional: a browser that cannot make one sends none.
+  posterWeb: { label: 'web copy', dir: DATA, types: { jpg: 8 * MB }, optional: true, of: 'poster' },
+  posterWeb2: { label: 'web copy', dir: DATA, types: { jpg: 8 * MB }, optional: true, of: 'poster2' },
+  posterWeb3: { label: 'web copy', dir: DATA, types: { jpg: 8 * MB }, optional: true, of: 'poster3' },
 };
+const IMAGES = ['poster', 'poster2', 'poster3'];
+const WEB_OF = { poster: 'posterWeb', poster2: 'posterWeb2', poster3: 'posterWeb3' };
+/** The public and review image paths: the headshot tile and the web copies, never a PNG. */
+const SHOWN = 'photo|posterWeb|posterWeb2|posterWeb3';
 const MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
 const EXT_OF_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
-/** Every part but the last is this size; R2 wants at least 5 MiB. A 250 MB poster is 16 parts. */
+/** Every part but the last is this size; R2 wants at least 5 MiB. A 250 MB image is 16 parts. */
 const PART_SIZE = 16 * MB;
 /** How long a browser has to finish uploading once it has started. */
 const UPLOAD_HOURS = 24;
@@ -246,14 +259,35 @@ function jpegSize(buf) {
   return null;
 }
 
-/** Why a file's pixel size is wrong for its kind, or ''. */
-function sizeProblem(kind, ext, buf) {
-  if (kind === 'poster') {
-    const d = pngSize(buf);
-    if (!d) return 'That poster could not be read. Please export it again as a PNG.';
-    if (Math.min(d.width, d.height) < POSTER_MIN.short || Math.max(d.width, d.height) < POSTER_MIN.long) {
-      return `That poster is ${d.width} x ${d.height} pixels, too small to print. Please export it again as a PNG at least ${POSTER_MIN.short} x ${POSTER_MIN.long} pixels (A1 at 150 DPI).`;
+/**
+ * A PNG's resolution in DPI, from its pHYs chunk (the lower of the two axes).
+ * null: the file records none (or not in metres). undefined: the bytes given
+ * end before the image data starts, so read further and ask again.
+ */
+function pngDpi(buf) {
+  let i = 8;
+  while (i + 8 <= buf.length) {
+    const len = buf.readUInt32BE(i);
+    const type = buf.toString('latin1', i + 4, i + 8);
+    if (type === 'IDAT' || type === 'IEND') return null; // pHYs must come before the image data
+    if (type === 'pHYs') {
+      if (i + 17 > buf.length) return undefined;
+      if (buf[i + 16] !== 1) return null;
+      return Math.min(buf.readUInt32BE(i + 8), buf.readUInt32BE(i + 12)) * 0.0254;
     }
+    i += 12 + len;
+  }
+  return undefined;
+}
+
+/** Why a file's pixel size or resolution is wrong for its kind, or ''. */
+function sizeProblem(kind, ext, buf) {
+  if (KINDS[kind].image) {
+    const label = KINDS[kind].label;
+    if (!pngSize(buf)) return `That ${label} could not be read. Please export it again as a PNG.`;
+    const dpi = pngDpi(buf);
+    if (!dpi) return `That ${label} has no DPI recorded. Please export it again as a PNG at ${MIN_DPI} DPI or more.`;
+    if (dpi < MIN_DPI - 0.5) return `That ${label} is ${Math.round(dpi)} DPI. Please export it again as a PNG at ${MIN_DPI} DPI or more.`;
   }
   if (kind === 'photo') {
     const d = ext === 'jpg' ? jpegSize(buf) : null;
@@ -490,10 +524,11 @@ async function start(req, res) {
     const size = Number(f?.size);
     const ext = EXT_OF_MIME[String(f?.type ?? '').toLowerCase()] ?? extFromName(f?.name);
     if (spec.optional) {
-      // A web copy is only wanted for the directory, and only kept when it is what it says.
+      // A web copy is only wanted for the directory, for an image that is sent, and only kept when it is what it says.
       if (listed && f && Number.isSafeInteger(size) && size > 0 && ext && spec.types[ext] && size <= spec.types[ext]) files[kind] = { size, ext };
       continue;
     }
+    if (spec.extra && !f) continue;
     if (!f || !Number.isSafeInteger(size) || size <= 0) {
       problems[kind] = `Please attach your ${spec.label}.`;
     } else if (!ext || !spec.types[ext]) {
@@ -502,6 +537,7 @@ async function start(req, res) {
       problems[kind] = `That ${spec.label} is too big. The limit is ${spec.types[ext] / MB} MB for ${ext.toUpperCase()}.`;
     } else files[kind] = { size, ext };
   }
+  for (const [img, web] of Object.entries(WEB_OF)) if (!files[img]) delete files[web];
   if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
 
   const open = [...records.values()].filter((r) => r.state === 'uploading').length + reserving.count;
@@ -594,7 +630,7 @@ async function complete(req, res) {
   const given = hashToken(String(body.token ?? ''));
   if (!r || !r.tokenHash || !timingSafeEqual(given, r.tokenHash)) return json(res, 404, { error: 'That upload was not found. Please start again.' });
 
-  const names = Object.fromEntries(Object.entries(r.files).filter(([k]) => !KINDS[k].optional).map(([k, f]) => [k, `${fileSafe(r.name)}.${f.ext}`]));
+  const names = Object.fromEntries(Object.entries(r.files).filter(([k]) => !KINDS[k].optional).map(([k, f]) => [k, `${fileSafe(r.name)}${KINDS[k].suffix ?? ''}.${f.ext}`]));
   // A browser that lost the first answer retries. If that first attempt is
   // still running, wait for it rather than complete the same uploads twice.
   if (completing.has(r.id)) {
@@ -629,7 +665,10 @@ async function finish(r, body, names) {
       await r2.completeMultipart(f.key, f.uploadId, etags);
       const size = await r2.head(f.key);
       // 64 KB reaches a JPEG's frame header past any APP segments; a PNG's is at byte 16.
-      const head = await r2.firstBytes(f.key, 64 * 1024);
+      let head = await r2.firstBytes(f.key, 64 * 1024);
+      // A PNG's DPI sits before its image data, past any colour profile and
+      // text chunks; a big profile or XMP block can push it past 64 KB.
+      if (KINDS[kind].image && fileType(head) === 'png' && pngDpi(head) === undefined && f.size > head.length) head = await r2.firstBytes(f.key, 4 * MB);
       const type = fileType(head);
       if (size !== f.size || type !== f.ext) {
         console.log(`complete ${r.id}: ${kind} is ${type ?? 'unknown'} ${size}, declared ${f.ext} ${f.size}`);
@@ -700,7 +739,7 @@ async function copyDown(r, kind, f, signal, alive) {
   const dir = KINDS[kind].dir;
   const final = `${r.id}.${kind}.${f.ext}`;
   const tmp = join(dir, `.${final}.part`);
-  if (kind === 'poster') {
+  if (KINDS[kind].image) {
     // Hundreds of MB: streamed through the PNG stripper, never held in memory.
     let received = 0;
     let crc = 0;
@@ -912,7 +951,7 @@ const usable = (f) => f && f.stored && f.file && !f.problem;
 const slugOf = (name) =>
   name.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'graduate';
 
-/** What the public page gets: the fields a wall label would carry and their links, never the email, "where from" or the poster PNG. */
+/** What the public page gets: the fields a wall label would carry and their links, never the email, "where from" or the image PNGs. */
 function directory() {
   const used = new Set();
   const out = [];
@@ -932,7 +971,7 @@ function directory() {
       instagram: r.instagram ?? '',
       website: r.website ?? '',
       photo: mediaUrl(r, 'photo'),
-      poster: usable(r.files.posterWeb) ? { kind: 'image', url: mediaUrl(r, 'posterWeb') } : null,
+      images: IMAGES.map((k) => WEB_OF[k]).filter((k) => usable(r.files[k])).map((k) => ({ kind: 'image', url: mediaUrl(r, k) })),
     });
   }
   return out;
@@ -983,8 +1022,8 @@ async function publicGet(req, res, path) {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' });
     return res.end(directoryJson.body);
   }
-  // Only the headshot tile and the poster's web copy; the poster PNG is never served.
-  const media = /^\/media\/([0-9a-f-]{1,64})\/(photo|posterWeb)\.(jpg)$/.exec(path);
+  // Only the headshot tile and the images' web copies; the PNGs are never served.
+  const media = new RegExp(`^/media/([0-9a-f-]{1,64})/(${SHOWN})\\.(jpg)$`).exec(path);
   if (media) {
     const r = shownRecord(media[1]);
     const f = r?.files[media[2]];
@@ -1010,11 +1049,11 @@ async function reviewPage(res) {
     .map((p) => {
       const r = p.latest;
       const photoKind = usable(r.files.photo) ? 'photo' : null;
-      const poster = usable(r.files.posterWeb)
-        ? `<a href="/_s/review/media/${r.id}/posterWeb" target="_blank" rel="noopener">View poster</a>`
-        : r.files.poster
-          ? '<span class="muted">No web copy of the poster (it is in the poster download)</span>'
-          : '';
+      const poster = IMAGES.map((k, i) => [k, i]).filter(([k]) => r.files[k])
+        .map(([k, i]) => usable(r.files[WEB_OF[k]])
+          ? `<a href="/_s/review/media/${r.id}/${WEB_OF[k]}" target="_blank" rel="noopener">View image ${i + 1}</a>`
+          : `<span class="muted">Image ${i + 1}: no web copy (it is in the images download)</span>`)
+        .join(' · ');
       const links = [['LinkedIn', r.linkedin], ['Instagram', r.instagram], ['Website', r.website]]
         .filter(([, u]) => u)
         .map(([label, u]) => ` · <a href="${esc(u)}" target="_blank" rel="noopener">${label}</a>`)
@@ -1072,7 +1111,7 @@ button.ghost{background:transparent;color:var(--ink);outline:1px solid var(--ink
 async function reviewMedia(res, id, kind) {
   const r = records.get(id);
   const f = r?.files[kind];
-  if (!usable(f) || !['photo', 'posterWeb'].includes(kind)) return res.writeHead(404).end();
+  if (!usable(f) || !SHOWN.split('|').includes(kind)) return res.writeHead(404).end();
   return sendFile(res, kind, f, 'private, no-store');
 }
 
@@ -1115,7 +1154,7 @@ function named(people) {
     for (let n = 2; used.has(base.toLowerCase()); n++) base = `${fileSafe(p.name)} ${n}`;
     used.add(base.toLowerCase());
     const out = {};
-    for (const [kind, f] of Object.entries(p.files)) out[kind] = f.problem ? null : `${base}.${f.ext}`;
+    for (const [kind, f] of Object.entries(p.files)) out[kind] = f.problem ? null : `${base}${KINDS[kind]?.suffix ?? ''}.${f.ext}`;
     return { p, out };
   });
 }
@@ -1149,14 +1188,16 @@ async function exportMain(res) {
     p.title ?? '',
     p.overview ?? '',
     file(p, out, 'photo', 'photos'),
-    file(p, out, 'poster', 'posters'),
-    mb(p.files.poster?.storedSize),
+    p.files.poster ? file(p, out, 'poster', 'images') : '',
+    p.files.poster2 ? file(p, out, 'poster2', 'images') : '',
+    p.files.poster3 ? file(p, out, 'poster3', 'images') : '',
+    mb(IMAGES.reduce((n, k) => n + (p.files[k]?.storedSize ?? 0), 0)),
     STATUS_WORD[status.get(p.id)] ?? '',
     adelaideTime(p.completedAt ?? p.submittedAt),
   ]);
   const sheet = await workbook(
-    ['Full name', 'Personal email', 'Exhibiting', 'Asked for directory', 'Degree', 'LinkedIn', 'Instagram', 'Website', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Directory', 'Submitted'],
-    [28, 32, 11, 12, 34, 40, 36, 36, 24, 36, 80, 34, 34, 12, 18, 20],
+    ['Full name', 'Personal email', 'Exhibiting', 'Asked for directory', 'Degree', 'LinkedIn', 'Instagram', 'Website', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Image 1', 'Image 2', 'Image 3', 'Images size', 'Directory', 'Submitted'],
+    [28, 32, 11, 12, 34, 40, 36, 36, 24, 36, 80, 34, 34, 34, 34, 12, 18, 20],
     rows,
     [10],
   );
@@ -1170,14 +1211,16 @@ async function exportMain(res) {
   await zip.finish();
 }
 
-/** Every poster, renamed after its person. Tens of GB; ZIP64 past 4 GB. */
-async function exportKind(res, kind) {
+/** Every project image, renamed after its person (Jane Citizen.png, Jane Citizen 2.png). Tens of GB; ZIP64 past 4 GB. */
+async function exportImages(res) {
   const people = named(latestStored());
-  zipHeaders(res, `${kind}s`);
+  zipHeaders(res, 'images');
   const zip = new ZipStream(res);
   for (const { p, out } of people) {
-    const f = p.files[kind];
-    if (out[kind]) await zip.addFile(`${kind}s/${out[kind]}`, join(KINDS[kind].dir, f.file), f.storedSize, f.crc);
+    for (const kind of IMAGES) {
+      const f = p.files[kind];
+      if (out[kind]) await zip.addFile(`images/${out[kind]}`, join(KINDS[kind].dir, f.file), f.storedSize, f.crc);
+    }
   }
   await zip.finish();
 }
@@ -1237,12 +1280,12 @@ const formServer = createServer((req, res) => {
   });
 });
 
-const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportKind(res, 'poster'), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
+const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportImages(res), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
 
 /** The admin route for a request, or null. Review media and decisions carry an id in the path. */
 function adminRoute(req, path) {
   if (req.method === 'GET' && ADMIN[path]) return (res) => ADMIN[path](res);
-  const media = req.method === 'GET' && /^\/review\/media\/([0-9a-f-]{1,64})\/(photo|posterWeb)$/.exec(path);
+  const media = req.method === 'GET' && new RegExp(`^/review/media/([0-9a-f-]{1,64})/(${SHOWN})$`).exec(path);
   if (media) return (res) => reviewMedia(res, media[1], media[2]);
   const act = req.method === 'POST' && /^\/review\/([0-9a-f-]{1,64})\/(approve|hide)$/.exec(path);
   if (act) return (res) => decide(req, res, act[1], act[2]);
