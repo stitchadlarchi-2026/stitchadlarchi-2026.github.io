@@ -53,10 +53,10 @@ const types = {
 const routes = {
   '/_s/start': [18081, '/start'], '/_s/complete': [18081, '/complete'],
   '/_s/export': [19091, '/export'], '/_s/export/posters': [19091, '/export/posters'],
-  '/_s/export/booklets': [19091, '/export/booklets'], '/_s/status': [19091, '/status'],
+  '/_s/status': [19091, '/status'],
   '/_s/directory.json': [18081, '/directory.json'],
 };
-const prefixes = [['/_s/media/', 18081], ['/_s/poster/', 18081], ['/_s/review', 19091]];
+const prefixes = [['/_s/media/', 18081], ['/_s/review', 19091]];
 
 createServer(async (req, res) => {
   const path = decodeURIComponent((req.url ?? '/').split('?')[0]);

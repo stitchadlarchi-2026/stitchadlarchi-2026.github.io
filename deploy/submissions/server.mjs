@@ -1,11 +1,15 @@
 /**
  * STITCH exhibition submissions.
  *
- * Each graduate sends their details and three files: a headshot, their
- * project poster, and their project booklet. Master's booklets run to
- * hundreds of megabytes, and stitchexhibition.com sits behind a Cloudflare
- * plan that refuses any request body over 100 MB and behind a home
- * connection, so the files never come through here at all:
+ * Each graduate gives their name and a personal email, and answers two
+ * questions: will they exhibit on the night, and do they want to be in the
+ * Student Directory. Someone who answers no to both sends nothing else, and
+ * their record is stored at once. Anyone else sends their details and two
+ * files: a 600 x 800 black-and-white headshot tile, cropped in their browser,
+ * and a PNG poster at print resolution. A poster runs to hundreds of
+ * megabytes, and stitchexhibition.com sits behind a Cloudflare plan that
+ * refuses any request body over 100 MB and behind a home connection, so the
+ * files never come through here at all:
  *
  *   1. POST /start     The browser sends the details, a Turnstile token and
  *                      the size and type of each file. This process checks
@@ -15,7 +19,7 @@
  *                      at once, retrying any that fail.
  *   3. POST /complete  The browser hands back the parts' ETags. This process
  *                      completes each upload and checks the object's real size
- *                      and first bytes. The submission is then `uploaded`.
+ *                      and first bytes, pixel size included. The submission is then `uploaded`.
  *   4. (R2 → disk)     The transfer worker below copies uploaded files down to
  *                      this box, a couple at a time, whatever the rush upstairs.
  *                      A spike of 300 people becomes a queue in R2, not a queue
@@ -23,23 +27,23 @@
  *
  * Every state lives in a JSON record on the `submissions-data` volume, written
  * atomically, so a restart resumes the queue where it stopped. Headshots are
- * kept with the records (that volume is backed up nightly); posters and
- * booklets go to `submissions-files`, and their R2 copies are kept until the
- * deletion date as the off-box copy.
+ * kept with the records (that volume is backed up nightly); posters go to
+ * `submissions-files`, and their R2 copies are kept until the deletion date
+ * as the off-box copy.
  *
- * The Student Directory. A graduate may also tick "show my profile in the
- * Student Directory". Their browser then sends small JPEG web copies of the
- * headshot (and of an image poster) beside the originals. Nothing is shown
- * until the committee approves it on the review page; a resubmission waits
- * for approval while the earlier approved profile stays up, and one without
- * the tick takes the profile down at once. The directory serves only those
- * web copies, and a PDF poster by a short-lived R2 link, never the originals
- * or the booklets, and it empties with everything else on the deletion date.
+ * The Student Directory. A graduate who answers yes to the directory has
+ * their browser send a small JPEG web copy of the poster beside the PNG; the
+ * headshot tile is already small. Nothing is shown until the committee
+ * approves it on the review page; a resubmission waits for approval while the
+ * earlier approved profile stays up, and one that answers no takes the
+ * profile down at once. The directory serves only the tile and the web copy,
+ * never the poster PNG, the email or "where from", and it empties with
+ * everything else on the deletion date.
  *
  * Two servers, two ports:
  *   FORM_PORT   POST /start, /complete              nginx, from the public site
- *               GET  /directory.json, /media/<id>/<kind>, /poster/<id>
- *   ADMIN_PORT  GET  /export[/posters|/booklets],   nginx, behind SUBMISSIONS_KEY
+ *               GET  /directory.json, /media/<id>/<kind>
+ *   ADMIN_PORT  GET  /export[/posters],             nginx, behind SUBMISSIONS_KEY
  *                    /status, /review, /review/media/<id>/<kind>
  *               POST /review/<id>/(approve|hide)
  *               GET  /health                        (healthcheck, local only)
@@ -54,7 +58,7 @@ import { mkdir, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { strip } from './metadata.mjs';
+import { PngStrip, strip } from './metadata.mjs';
 import { R2 } from './r2.mjs';
 import { ZipStream, crc32, workbook } from './zip.mjs';
 
@@ -83,26 +87,30 @@ const r2 = process.env.R2_BUCKET
 
 const MB = 1024 * 1024;
 /**
+ * The poster's smallest pixel size, either way up: A1 (594 x 841 mm) at
+ * 150 DPI. Pixels are what print; a DPI number in the file's metadata is not
+ * checked, because any export can claim any number. Keep in step with
+ * index.html.
+ */
+const POSTER_MIN = { short: 3508, long: 4967 };
+/** The headshot tile the browser crops to: portrait, black and white. Keep in step with index.html. */
+const TILE = { width: 600, height: 800 };
+/**
  * What each upload may be. Types are checked twice: against what the browser
- * declares at /start, and against the object's real first bytes at /complete.
- * A poster image is capped lower than a poster PDF because its metadata is
- * stripped in memory.
+ * declares at /start, and against the object's real first bytes at /complete,
+ * where the pixel size is checked too.
  */
 const KINDS = {
-  photo: { label: 'headshot', dir: DATA, types: { jpg: 20 * MB, png: 20 * MB, webp: 20 * MB } },
-  poster: { label: 'poster', dir: FILES, types: { pdf: 300 * MB, jpg: 60 * MB, png: 60 * MB } },
-  booklet: { label: 'booklet', dir: FILES, types: { pdf: 1024 * MB } },
-  // Web copies the browser makes for the Student Directory, only when the
-  // person opts in. Optional: a browser that cannot make one just sends none.
-  photoWeb: { label: 'web headshot', dir: DATA, types: { jpg: 4 * MB }, optional: true },
+  photo: { label: 'headshot', dir: DATA, types: { jpg: 4 * MB } },
+  poster: { label: 'poster', dir: FILES, types: { png: 250 * MB } },
+  // A web copy the browser makes for the Student Directory, only for someone
+  // who wants to be in it. Optional: a browser that cannot make one sends none.
   posterWeb: { label: 'web poster', dir: DATA, types: { jpg: 8 * MB }, optional: true },
 };
-/** What the directory may show of a record: only these, never the originals' bulk. */
-const WEB = ['photoWeb', 'posterWeb'];
 const MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
 const EXT_OF_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
-/** Every part but the last is this size; R2 wants at least 5 MiB. A 1 GB booklet is 64 parts. */
+/** Every part but the last is this size; R2 wants at least 5 MiB. A 250 MB poster is 16 parts. */
 const PART_SIZE = 16 * MB;
 /** How long a browser has to finish uploading once it has started. */
 const UPLOAD_HOURS = 24;
@@ -127,11 +135,11 @@ const TRANSFERS = Number(process.env.TRANSFERS ?? 2);
  */
 const STALL_MS = Number(process.env.STALL_SECONDS ?? 60) * 1000;
 
-const LIMITS = { name: 120, degree: 120, from: 120, linkedin: 300, title: 150, overview: 1500 };
+const LIMITS = { name: 120, email: 254, degree: 120, from: 120, linkedin: 300, instagram: 300, website: 300, title: 150, overview: 1500 };
 /** The project overview is a wall label, not an essay. */
 const MAX_WORDS = 150;
 /** Recorded with each submission. Keep in step with the notice in index.html. */
-const CONSENT = 'exhibition labels and catalogue, stitchexhibition.com, STITCH social media; deleted after 31 January 2027';
+const CONSENT = 'exhibition labels and catalogue if exhibiting, stitchexhibition.com, STITCH social media; email for committee contact only, never published; deleted after 31 January 2027';
 
 const salt = randomBytes(32);
 const budget = new Map();
@@ -176,8 +184,13 @@ function fileSafe(name) {
 
 const nameKey = (name) => name.toLocaleLowerCase('en-AU').replace(/\s+/g, ' ').trim();
 
-function linkedinUrl(v) {
-  const s = oneLine(v, LIMITS.linkedin);
+/**
+ * A link a person typed, as an https address, or '' for none, or null for one
+ * that is not a web address. Only http and https get through: these links are
+ * shown on the public directory.
+ */
+function webUrl(v, max, host) {
+  const s = oneLine(v, max);
   if (!s) return '';
   let u;
   try {
@@ -185,10 +198,68 @@ function linkedinUrl(v) {
   } catch {
     return null;
   }
-  if (!/^https?:$/.test(u.protocol)) return null;
-  if (!/(^|\.)linkedin\.com$/i.test(u.hostname)) return null;
+  if (!/^https?:$/.test(u.protocol) || u.username || u.password) return null;
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(u.hostname)) return null;
+  if (host && !host.test(u.hostname)) return null;
   u.protocol = 'https:';
   return u.toString();
+}
+const linkedinUrl = (v) => webUrl(v, LIMITS.linkedin, /(^|\.)linkedin\.com$/i);
+const websiteUrl = (v) => webUrl(v, LIMITS.website);
+
+/** An Instagram profile from a link, "@handle" or a bare handle. */
+function instagramUrl(v) {
+  const s = oneLine(v, LIMITS.instagram);
+  if (!s) return '';
+  const handle = /^@?([a-z0-9._]{1,30})$/i.exec(s);
+  if (handle) return `https://www.instagram.com/${handle[1]}/`;
+  const u = webUrl(s, LIMITS.instagram, /(^|\.)instagram\.com$/i);
+  if (!u) return null;
+  const path = /^\/([a-z0-9._]{1,30})\/?$/i.exec(new URL(u).pathname);
+  return path ? `https://www.instagram.com/${path[1]}/` : null;
+}
+
+/** A plausible email address, or null. Only the committee ever sees it. */
+function emailAddress(v) {
+  const s = oneLine(v, LIMITS.email).toLowerCase();
+  return /^[^\s@<>()[\]\\,;:"]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(s) && !/\.\./.test(s) ? s : null;
+}
+
+/** A PNG's width and height, from its IHDR chunk at byte 16. */
+function pngSize(buf) {
+  if (buf.length < 24 || buf.toString('latin1', 12, 16) !== 'IHDR') return null;
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+/** A JPEG's width and height, from its first start-of-frame marker. */
+function jpegSize(buf) {
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) return null;
+    const m = buf[i + 1];
+    if (m === 0xff) { i += 1; continue; }
+    if (m === 0xd8 || (m >= 0xd0 && m <= 0xd7) || m === 0x01) { i += 2; continue; }
+    const len = buf.readUInt16BE(i + 2);
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    i += 2 + len;
+  }
+  return null;
+}
+
+/** Why a file's pixel size is wrong for its kind, or ''. */
+function sizeProblem(kind, ext, buf) {
+  if (kind === 'poster') {
+    const d = pngSize(buf);
+    if (!d) return 'That poster could not be read. Please export it again as a PNG.';
+    if (Math.min(d.width, d.height) < POSTER_MIN.short || Math.max(d.width, d.height) < POSTER_MIN.long) {
+      return `That poster is ${d.width} x ${d.height} pixels, too small to print. Please export it again as a PNG at least ${POSTER_MIN.short} x ${POSTER_MIN.long} pixels (A1 at 150 DPI).`;
+    }
+  }
+  if (kind === 'photo') {
+    const d = ext === 'jpg' ? jpegSize(buf) : null;
+    if (!d || d.width !== TILE.width || d.height !== TILE.height) return 'Your headshot did not crop properly. Please choose it again.';
+  }
+  return '';
 }
 
 /** What the bytes really are, whatever the browser said. HEIC is refused: see metadata.mjs. */
@@ -376,26 +447,42 @@ async function start(req, res) {
   const body = await readJson(req);
 
   // Bots fill every field; people never see this one.
-  if (oneLine(body.website, 200)) return json(res, 200, { ok: true, decoy: true });
+  if (oneLine(body.ref_code, 200)) return json(res, 200, { ok: true, decoy: true });
   if (!(await human(oneLine(body.turnstile, 4096), req))) {
     return json(res, 403, { error: 'We could not confirm you are not a robot. Please reload the page and try again.' });
   }
 
   const name = oneLine(body.name, LIMITS.name);
+  const email = emailAddress(body.email);
+  const problems = {};
+  if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
+  if (!email) problems.email = 'Please give an email address we can reach you on.';
+  if (typeof body.exhibit !== 'boolean') problems.exhibit = 'Please answer yes or no.';
+  if (typeof body.directory !== 'boolean') problems.directory = 'Please answer yes or no.';
+  const exhibit = body.exhibit === true;
+  const listed = body.directory === true;
+
+  // No to both: nothing else is asked or kept. The record says they answered.
+  if (!exhibit && !listed) {
+    if (Object.keys(problems).length) return json(res, 422, { error: 'Some fields need another look.', fields: problems });
+    return declined(res, { name, email });
+  }
+
   const from = oneLine(body.from, LIMITS.from);
   const degree = oneLine(body.degree, LIMITS.degree);
   const title = oneLine(body.title, LIMITS.title);
   const overview = clean(body.overview, LIMITS.overview);
   const linkedin = linkedinUrl(body.linkedin);
-  const problems = {};
-  if (name.split(' ').filter(Boolean).length < 2) problems.name = 'Please give your full name, first and last.';
+  const instagram = instagramUrl(body.instagram);
+  const website = websiteUrl(body.website);
   if (!degree || degree === 'other') problems.degree = 'Please choose your degree.';
   if (linkedin === null) problems.linkedin = 'That does not look like a LinkedIn link.';
+  if (instagram === null) problems.instagram = 'That does not look like an Instagram handle or link.';
+  if (website === null) problems.website = 'That does not look like a web address.';
   if (!title) problems.title = 'Please give your project a title.';
   if (overview.length < 20) problems.overview = 'Please write a short overview of your project.';
   else if (overview.split(/\s+/).filter(Boolean).length > MAX_WORDS) problems.overview = `Please keep it to ${MAX_WORDS} words or fewer.`;
   if (body.consent !== true) problems.consent = 'Please tick the box to agree to how your details are used.';
-  const listed = body.directory === true;
 
   const files = {};
   for (const [kind, spec] of Object.entries(KINDS)) {
@@ -426,29 +513,46 @@ async function start(req, res) {
   reserving.count += 1;
   reserving.bytes += wanted;
   try {
-    return await openUploads(res, { name, degree, linkedin, from, title, overview, listed, files });
+    return await openUploads(res, { name, email, exhibit, listed, degree, linkedin, instagram, website, from, title, overview, files });
   } finally {
     reserving.count -= 1;
     reserving.bytes -= wanted;
   }
 }
 
-async function openUploads(res, { name, degree, linkedin, from, title, overview, listed, files }) {
+const newId = (at) => `${at.replace(/[-:.TZ]/g, '')}-${randomBytes(4).toString('hex')}`;
+
+/** No to both questions: a record of the answer, with the name and email only, stored at once. */
+async function declined(res, { name, email }) {
+  const at = new Date().toISOString();
+  const record = { id: newId(at), submittedAt: at, completedAt: at, storedAt: at, state: 'stored', name, email, exhibit: false, listed: false, files: {} };
+  await save(record);
+  console.log(`declined ${record.id}`);
+  return json(res, 200, { ok: true, done: true, names: {} });
+}
+
+async function openUploads(res, { name, email, exhibit, listed, degree, linkedin, instagram, website, from, title, overview, files }) {
   const submittedAt = new Date().toISOString();
-  const id = `${submittedAt.replace(/[-:.TZ]/g, '')}-${randomBytes(4).toString('hex')}`;
+  const id = newId(submittedAt);
   const token = randomBytes(24).toString('base64url');
   const record = {
     id,
     submittedAt,
     state: 'uploading',
     name,
+    /** For the committee to reach them. Never public. */
+    email,
+    /** Whether they will exhibit on the night. */
+    exhibit,
+    /** Whether they asked to be shown in the Student Directory. */
+    listed,
     degree,
     linkedin: linkedin ?? '',
+    instagram: instagram ?? '',
+    website: website ?? '',
     from,
     title,
     overview,
-    /** Whether they asked to be shown in the Student Directory. */
-    listed,
     /** What the person agreed to, in the words of the notice they ticked. */
     consent: CONSENT,
     tokenHash: hashToken(token),
@@ -474,7 +578,7 @@ async function openUploads(res, { name, degree, linkedin, from, title, overview,
   return json(res, 200, answer);
 }
 
-const extFromName = (n) => ({ jpg: 'jpg', jpeg: 'jpg', png: 'png', webp: 'webp', pdf: 'pdf' })[String(n ?? '').split('.').pop().toLowerCase()];
+const extFromName = (n) => ({ jpg: 'jpg', jpeg: 'jpg', png: 'png' })[String(n ?? '').split('.').pop().toLowerCase()];
 const typeList = (spec) => {
   const t = Object.keys(spec.types).map((e) => e.toUpperCase());
   return t.length === 1 ? `a ${t[0]}` : `a ${t.slice(0, -1).join(', ')} or ${t.at(-1)}`;
@@ -524,13 +628,22 @@ async function finish(r, body, names) {
     try {
       await r2.completeMultipart(f.key, f.uploadId, etags);
       const size = await r2.head(f.key);
-      const type = fileType(await r2.firstBytes(f.key, 1024));
+      // 64 KB reaches a JPEG's frame header past any APP segments; a PNG's is at byte 16.
+      const head = await r2.firstBytes(f.key, 64 * 1024);
+      const type = fileType(head);
       if (size !== f.size || type !== f.ext) {
         console.log(`complete ${r.id}: ${kind} is ${type ?? 'unknown'} ${size}, declared ${f.ext} ${f.size}`);
         await r2.delete(f.key);
         problems[kind] = type && type !== f.ext && KINDS[kind].types[type]
           ? `That ${KINDS[kind].label} is really a ${type.toUpperCase()}, not a ${f.ext.toUpperCase()}. Please try again.`
           : `That ${KINDS[kind].label} is not ${typeList(KINDS[kind])}. Please choose another file.`;
+        return;
+      }
+      const wrong = sizeProblem(kind, type, head);
+      if (wrong) {
+        console.log(`complete ${r.id}: ${kind} refused: ${wrong}`);
+        await r2.delete(f.key);
+        problems[kind] = wrong;
         return;
       }
       f.completed = true;
@@ -587,19 +700,40 @@ async function copyDown(r, kind, f, signal, alive) {
   const dir = KINDS[kind].dir;
   const final = `${r.id}.${kind}.${f.ext}`;
   const tmp = join(dir, `.${final}.part`);
-  if (f.ext === 'pdf') {
+  if (kind === 'poster') {
+    // Hundreds of MB: streamed through the PNG stripper, never held in memory.
+    let received = 0;
     let crc = 0;
     let size = 0;
-    const counter = new Transform({
+    const arriving = new Transform({
       transform(chunk, _enc, done) {
         alive();
+        received += chunk.length;
+        done(null, chunk);
+      },
+    });
+    const counter = new Transform({
+      transform(chunk, _enc, done) {
         crc = crc32(chunk, crc);
         size += chunk.length;
         done(null, chunk);
       },
     });
-    await pipeline(Readable.fromWeb(await r2.stream(f.key, { signal })), counter, createWriteStream(tmp), { signal });
-    if (size !== f.size) throw new Error(`${kind} came down as ${size} bytes, expected ${f.size}`);
+    const stripper = new PngStrip();
+    try {
+      await pipeline(Readable.fromWeb(await r2.stream(f.key, { signal })), arriving, stripper, counter, createWriteStream(tmp), { signal });
+    } catch (e) {
+      // A dropped connection is retried; a file that is not a whole PNG never will be.
+      // (A stream cut short also looks like a PNG with no end: that is retried too.)
+      const cutShort = received !== f.size && stripper.malformed?.message === 'no IEND';
+      if (!stripper.malformed || signal.aborted || cutShort) throw e;
+      await rm(tmp, { force: true });
+      f.problem = 'could not be read; ask for another file';
+      f.stored = true;
+      console.log(`transfer ${r.id}: ${kind} unreadable (${e.message})`);
+      return;
+    }
+    if (received !== f.size) throw new Error(`${kind} came down as ${received} bytes, expected ${f.size}`);
     f.crc = crc;
     f.storedSize = size;
   } else {
@@ -756,12 +890,13 @@ function buildProfiles() {
   const list = [...byName.values()].sort((a, b) => a.latest.name.localeCompare(b.latest.name, 'en-AU'));
   for (const p of list) {
     const mark = approvals[p.latest.id];
+    p.declined = !p.latest.listed && p.latest.exhibit === false;
     p.status = !p.latest.listed ? 'private' : mark === 'approved' ? 'live' : mark === 'hidden' ? 'hidden' : 'waiting';
     p.shown = null;
     if (p.latest.listed && mark !== 'hidden') {
       for (let i = p.history.length - 1; i >= 0; i--) {
         const r = p.history[i];
-        if (r.listed && approvals[r.id] === 'approved' && (usable(r.files.photoWeb) || usable(r.files.photo))) {
+        if (r.listed && approvals[r.id] === 'approved' && usable(r.files.photo)) {
           p.shown = r;
           break;
         }
@@ -777,7 +912,7 @@ const usable = (f) => f && f.stored && f.file && !f.problem;
 const slugOf = (name) =>
   name.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'graduate';
 
-/** What the public page gets: the fields a wall label would carry, never "where from" or the files' originals. */
+/** What the public page gets: the fields a wall label would carry and their links, never the email, "where from" or the poster PNG. */
 function directory() {
   const used = new Set();
   const out = [];
@@ -787,10 +922,6 @@ function directory() {
     let slug = slugOf(r.name);
     for (let n = 2; used.has(slug); n++) slug = `${slugOf(r.name)}-${n}`;
     used.add(slug);
-    const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : 'photo';
-    let poster = null;
-    if (usable(r.files.posterWeb)) poster = { kind: 'image', url: mediaUrl(r, 'posterWeb') };
-    else if (r.files.poster?.ext === 'pdf' && r.files.poster.stored) poster = { kind: 'pdf', url: `/_s/poster/${r.id}` };
     out.push({
       slug,
       name: r.name,
@@ -798,8 +929,10 @@ function directory() {
       title: r.title ?? '',
       overview: r.overview,
       linkedin: r.linkedin,
-      photo: mediaUrl(r, photoKind),
-      poster,
+      instagram: r.instagram ?? '',
+      website: r.website ?? '',
+      photo: mediaUrl(r, 'photo'),
+      poster: usable(r.files.posterWeb) ? { kind: 'image', url: mediaUrl(r, 'posterWeb') } : null,
     });
   }
   return out;
@@ -838,7 +971,7 @@ async function sendFile(res, kind, f, cache) {
 /** The directory as sent, rebuilt only when profiles() is. */
 const directoryJson = { for: null, body: '' };
 
-/** GET /directory.json, /media/<id>/<kind>, /poster/<id>: approved profiles only. */
+/** GET /directory.json, /media/<id>/<kind>: approved profiles only. */
 async function publicGet(req, res, path) {
   if (!publicAllowed(req)) return json(res, 429, { error: 'Too many requests. Please wait a minute.' });
   if (path === '/directory.json') {
@@ -850,27 +983,13 @@ async function publicGet(req, res, path) {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' });
     return res.end(directoryJson.body);
   }
-  const media = /^\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)\.(jpg|png|webp)$/.exec(path);
+  // Only the headshot tile and the poster's web copy; the poster PNG is never served.
+  const media = /^\/media\/([0-9a-f-]{1,64})\/(photo|posterWeb)\.(jpg)$/.exec(path);
   if (media) {
     const r = shownRecord(media[1]);
     const f = r?.files[media[2]];
-    // The original headshot only stands in when the browser could not make a web copy.
-    if (!r || !usable(f) || f.ext !== media[3] || (media[2] === 'photo' && usable(r.files.photoWeb))) return gone(res);
+    if (!r || !usable(f) || f.ext !== media[3]) return gone(res);
     return sendFile(res, media[2], f, PUBLIC_IMAGE_CACHE);
-  }
-  const poster = /^\/poster\/([0-9a-f-]{1,64})$/.exec(path);
-  if (poster) {
-    const r = shownRecord(poster[1]);
-    const f = r?.files.poster;
-    if (!r || f?.ext !== 'pdf' || !f.stored) return gone(res);
-    // A poster PDF runs to hundreds of MB: hand the reader a short-lived R2 link
-    // rather than stream it up the home connection. Without R2, stream it.
-    if (r2) {
-      const url = r2.presign('GET', f.key, { expires: 15 * 60, query: { 'response-content-disposition': `inline; filename="${fileSafe(r.name).replace(/[^\x20-\x7e]/g, '_')} - poster.pdf"` } });
-      res.writeHead(302, { location: url, 'cache-control': 'no-store' });
-      return res.end();
-    }
-    return sendFile(res, 'poster', f, 'no-store');
   }
   return gone(res);
 }
@@ -890,18 +1009,21 @@ async function reviewPage(res) {
   const cards = list
     .map((p) => {
       const r = p.latest;
-      // Someone who did not opt in has nothing to review, so their full-size original is not loaded.
-      const photoKind = usable(r.files.photoWeb) ? 'photoWeb' : p.status !== 'private' && usable(r.files.photo) ? 'photo' : null;
-      const posterKind = usable(r.files.posterWeb) ? 'posterWeb' : null;
-      const poster = posterKind
-        ? `<a href="/_s/review/media/${r.id}/${posterKind}" target="_blank" rel="noopener">View poster</a>`
-        : r.files.poster?.ext === 'pdf'
-          ? '<span class="muted">Poster is a PDF (in the poster download)</span>'
-          : '<span class="muted">No web copy of the poster</span>';
+      const photoKind = usable(r.files.photo) ? 'photo' : null;
+      const poster = usable(r.files.posterWeb)
+        ? `<a href="/_s/review/media/${r.id}/posterWeb" target="_blank" rel="noopener">View poster</a>`
+        : r.files.poster
+          ? '<span class="muted">No web copy of the poster (it is in the poster download)</span>'
+          : '';
+      const links = [['LinkedIn', r.linkedin], ['Instagram', r.instagram], ['Website', r.website]]
+        .filter(([, u]) => u)
+        .map(([label, u]) => ` · <a href="${esc(u)}" target="_blank" rel="noopener">${label}</a>`)
+        .join('');
+      const answers = `${r.exhibit === false ? 'Not exhibiting' : 'Exhibiting'} · ${esc(r.email || 'no email')}`;
       const note = p.status === 'waiting' && p.shown && p.shown.id !== r.id ? '<p class="note">Updated. Their earlier approved profile stays up until you approve this one.</p>' : '';
       const actions =
         p.status === 'private'
-          ? '<p class="muted">They did not ask to be in the Student Directory.</p>'
+          ? p.declined ? '' : '<p class="muted">They did not ask to be in the Student Directory.</p>'
           : `<form method="post" action="/_s/review/${esc(r.id)}/approve"><button ${p.status === 'live' ? 'disabled' : ''}>Approve</button></form>
              <form method="post" action="/_s/review/${esc(r.id)}/hide"><button class="ghost" ${p.status === 'hidden' ? 'disabled' : ''}>Hide</button></form>`;
       return `<article class="card ${p.status}">
@@ -909,8 +1031,9 @@ async function reviewPage(res) {
         <div class="body">
           <p class="status">${STATUS_WORD[p.status]}</p>
           <h2>${esc(r.name)}</h2>
-          <p class="meta">${esc(r.degree || 'No degree given')}${r.linkedin ? ` · <a href="${esc(r.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}</p>
-          <p class="ov"><b>${esc(r.title || 'Untitled')}</b><br>${esc(r.overview)}</p>
+          <p class="meta">${answers}</p>
+          ${p.declined ? '<p class="muted">Not exhibiting and not in the directory: nothing else was asked.</p>' : `<p class="meta">${esc(r.degree || 'No degree given')}${links}</p>
+          <p class="ov"><b>${esc(r.title || 'Untitled')}</b><br>${esc(r.overview)}</p>`}
           <p>${poster}</p>
           ${note}
           <div class="actions">${actions}</div>
@@ -949,7 +1072,7 @@ button.ghost{background:transparent;color:var(--ink);outline:1px solid var(--ink
 async function reviewMedia(res, id, kind) {
   const r = records.get(id);
   const f = r?.files[kind];
-  if (!usable(f) || !['photoWeb', 'photo', 'posterWeb'].includes(kind)) return res.writeHead(404).end();
+  if (!usable(f) || !['photo', 'posterWeb'].includes(kind)) return res.writeHead(404).end();
   return sendFile(res, kind, f, 'private, no-store');
 }
 
@@ -1011,27 +1134,31 @@ function zipHeaders(res, label) {
 async function exportMain(res) {
   const people = named(latestStored());
   const status = new Map(profiles().map((p) => [p.latest.id, p.status]));
+  const declined = (p) => p.exhibit === false && !p.listed;
+  const file = (p, out, kind, folder) => (declined(p) ? '' : out[kind] ? `${folder}/${out[kind]}` : `${KINDS[kind].label} ${p.files[kind]?.problem ?? 'missing'}`);
   const rows = people.map(({ p, out }) => [
     p.name,
-    p.degree ?? '',
-    p.linkedin,
-    p.from,
-    p.title ?? '',
-    p.overview,
-    out.photo ? `photos/${out.photo}` : `headshot ${p.files.photo?.problem ?? 'missing'}`,
-    out.poster ? `posters/${out.poster}` : `poster ${p.files.poster?.problem ?? 'missing'}`,
-    mb(p.files.poster?.storedSize),
-    out.booklet ? `booklets/${out.booklet}` : `booklet ${p.files.booklet?.problem ?? 'missing'}`,
-    mb(p.files.booklet?.storedSize),
+    p.email ?? '',
+    p.exhibit === false ? 'No' : 'Yes',
     p.listed ? 'Yes' : 'No',
+    p.degree ?? '',
+    p.linkedin ?? '',
+    p.instagram ?? '',
+    p.website ?? '',
+    p.from ?? '',
+    p.title ?? '',
+    p.overview ?? '',
+    file(p, out, 'photo', 'photos'),
+    file(p, out, 'poster', 'posters'),
+    mb(p.files.poster?.storedSize),
     STATUS_WORD[status.get(p.id)] ?? '',
     adelaideTime(p.completedAt ?? p.submittedAt),
   ]);
   const sheet = await workbook(
-    ['Full name', 'Degree', 'LinkedIn', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Booklet', 'Booklet size', 'Asked for directory', 'Directory', 'Submitted'],
-    [28, 34, 40, 24, 36, 80, 34, 34, 12, 34, 12, 12, 18, 20],
+    ['Full name', 'Personal email', 'Exhibiting', 'Asked for directory', 'Degree', 'LinkedIn', 'Instagram', 'Website', 'Where from', 'Project title', 'Project overview', 'Headshot', 'Poster', 'Poster size', 'Directory', 'Submitted'],
+    [28, 32, 11, 12, 34, 40, 36, 36, 24, 36, 80, 34, 34, 12, 18, 20],
     rows,
-    [5],
+    [10],
   );
   zipHeaders(res, 'submissions');
   const zip = new ZipStream(res);
@@ -1043,7 +1170,7 @@ async function exportMain(res) {
   await zip.finish();
 }
 
-/** Every poster or every booklet, renamed after its person. Tens of GB; ZIP64 past 4 GB. */
+/** Every poster, renamed after its person. Tens of GB; ZIP64 past 4 GB. */
 async function exportKind(res, kind) {
   const people = named(latestStored());
   zipHeaders(res, `${kind}s`);
@@ -1068,6 +1195,8 @@ function statusReport() {
   const people = latestStored();
   return {
     people: people.length,
+    exhibiting: people.filter((p) => p.exhibit !== false).length,
+    declinedBoth: people.filter((p) => p.exhibit === false && !p.listed).length,
     submissions: count,
     queue: { waiting: waiting.length, waitingMB: Math.round(waitingBytes / MB), transferring: transfer.running },
     lastTransferError: transfer.lastError ? { at: transfer.lastErrorAt, error: transfer.lastError } : null,
@@ -1108,12 +1237,12 @@ const formServer = createServer((req, res) => {
   });
 });
 
-const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportKind(res, 'poster'), '/export/booklets': (res) => exportKind(res, 'booklet'), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
+const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportKind(res, 'poster'), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
 
 /** The admin route for a request, or null. Review media and decisions carry an id in the path. */
 function adminRoute(req, path) {
   if (req.method === 'GET' && ADMIN[path]) return (res) => ADMIN[path](res);
-  const media = req.method === 'GET' && /^\/review\/media\/([0-9a-f-]{1,64})\/(photoWeb|photo|posterWeb)$/.exec(path);
+  const media = req.method === 'GET' && /^\/review\/media\/([0-9a-f-]{1,64})\/(photo|posterWeb)$/.exec(path);
   if (media) return (res) => reviewMedia(res, media[1], media[2]);
   const act = req.method === 'POST' && /^\/review\/([0-9a-f-]{1,64})\/(approve|hide)$/.exec(path);
   if (act) return (res) => decide(req, res, act[1], act[2]);

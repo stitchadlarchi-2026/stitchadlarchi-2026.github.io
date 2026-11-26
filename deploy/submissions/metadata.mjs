@@ -13,6 +13,8 @@
  * asks for another photo. Node builtins only.
  */
 
+import { Transform } from 'node:stream';
+
 /** JPEG: keep only the segments a decoder needs, plus ICC colour and orientation. */
 function stripJpeg(buf) {
   const out = [buf.subarray(0, 2)];
@@ -122,8 +124,11 @@ function orientationSegment(value) {
 }
 
 /** PNG: drop the text, time and EXIF chunks. Whole chunks go, so no CRC changes. */
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_DROP = new Set(['eXIf', 'tEXt', 'zTXt', 'iTXt', 'tIME']);
+
 function stripPng(buf) {
-  const drop = new Set(['eXIf', 'tEXt', 'zTXt', 'iTXt', 'tIME']);
+  const drop = PNG_DROP;
   const out = [buf.subarray(0, 8)];
   let i = 8;
   let ended = false;
@@ -142,6 +147,80 @@ function stripPng(buf) {
   }
   if (!ended) throw new Error('no IEND');
   return Buffer.concat(out);
+}
+
+/**
+ * The same as stripPng, as a stream, for a poster of hundreds of megabytes
+ * that should not sit in memory. Chunks pass through as they arrive; a
+ * dropped chunk's bytes are skipped. Errors on anything that is not a whole,
+ * well-formed PNG ending at IEND.
+ */
+export class PngStrip extends Transform {
+  constructor() {
+    super();
+    this.buf = Buffer.alloc(0);
+    this.signature = false;
+    this.skip = 0; // bytes of a dropped chunk still to come
+    this.pass = 0; // bytes of a kept chunk still to come
+    this.ended = false;
+  }
+
+  _transform(chunk, _enc, done) {
+    try {
+      this.take(chunk);
+      done();
+    } catch (e) {
+      this.malformed = e;
+      done(e);
+    }
+  }
+
+  take(chunk) {
+    let c = this.buf.length ? Buffer.concat([this.buf, chunk]) : chunk;
+    this.buf = Buffer.alloc(0);
+    while (c.length) {
+      if (this.ended) throw new Error('data after IEND');
+      if (this.skip) {
+        const n = Math.min(this.skip, c.length);
+        this.skip -= n;
+        c = c.subarray(n);
+        continue;
+      }
+      if (this.pass) {
+        const n = Math.min(this.pass, c.length);
+        this.push(c.subarray(0, n));
+        this.pass -= n;
+        c = c.subarray(n);
+        if (!this.pass && this.last) this.ended = true;
+        continue;
+      }
+      if (!this.signature) {
+        if (c.length < 8) break;
+        if (!c.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error('not a PNG');
+        this.push(c.subarray(0, 8));
+        this.signature = true;
+        c = c.subarray(8);
+        continue;
+      }
+      if (c.length < 8) break;
+      const len = c.readUInt32BE(0);
+      if (len > 0x7fffffff) throw new Error('bad chunk length');
+      const type = c.toString('latin1', 4, 8);
+      if (!/^[A-Za-z]{4}$/.test(type)) throw new Error('bad chunk type');
+      if (PNG_DROP.has(type)) this.skip = len + 12;
+      else {
+        this.pass = len + 12;
+        this.last = type === 'IEND';
+      }
+    }
+    if (c.length) this.buf = Buffer.from(c);
+  }
+
+  _flush(done) {
+    if (this.ended && !this.buf.length) return done();
+    this.malformed = new Error('no IEND');
+    done(this.malformed);
+  }
 }
 
 /** WebP: drop the EXIF and XMP chunks and clear their flags in VP8X. */

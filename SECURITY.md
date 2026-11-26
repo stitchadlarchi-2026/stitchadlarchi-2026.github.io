@@ -11,16 +11,25 @@ Until 2026-11-25 the site was a static page that took no input. The exhibition f
 STITCH committee, so the site holds third-party personal information and the whole
 `cybersecurity` baseline applies.
 
-**What is held, and where.** Per submission: a JSON record and a headshot on the Docker volume
-`stitch-exhibition_submissions-data`, and a poster and a booklet on
+**What is held, and where.** Per submission: a JSON record and a headshot tile on the Docker volume
+`stitch-exhibition_submissions-data`, and a PNG poster on
 `stitch-exhibition_submissions-files`, on NCH Consultancy's server in Australia. Every file
 is also in the R2 bucket `stitch-uploads` on NCH's Cloudflare account (location hint:
 Oceania) until the deletion date. Only `deploy/submissions/server.mjs` reads or writes any of
-it. It binds named fields only: name, degree, LinkedIn, place of origin, project title, overview, the three files,
-and the text of the consent the person ticked. The browsers' file names are not kept.
+it. It binds named fields only: name, personal email, the answers to "exhibit on the night" and
+"Student Directory", degree, LinkedIn, Instagram, website, place of origin, project title,
+overview, the files, and the text of the consent the person ticked. The browsers' file names
+are not kept. Someone who answers no to both questions gives only their name and email, and
+nothing else is asked or kept.
 
-**Since 2026-11-26 the files go straight to R2.** A master's booklet runs to hundreds of
-megabytes; Cloudflare refuses request bodies over 100 MB to stitchexhibition.com, and the
+**Personal email (since 2026-11-26, STITCH-2).** Asked of everyone, so the committee can reach
+a graduate about their entry. It is contact data, not for publication: it appears in the
+committee's sheet and on the review page, both behind `SUBMISSIONS_KEY`, and never in
+`/_s/directory.json` or anywhere public. It is deleted with everything else on the deletion
+date.
+
+**Since 2026-11-26 the files go straight to R2.** A print-resolution PNG poster runs to
+hundreds of megabytes; Cloudflare refuses request bodies over 100 MB to stitchexhibition.com, and the
 home uplink is 44 Mbit/s. So the browser asks `/start` for presigned part URLs and uploads
 the parts to R2 itself, then calls `/complete`; the service copies each file down from R2
 afterwards (`deploy/README.md` has the diagram, `deploy/submissions/LOADTEST.md` the test).
@@ -33,29 +42,35 @@ one method, one object, one part number and one exact `Content-Length`, and expi
 24 hours. R2 refuses a part of any other length. Lifecycle: unfinished multipart uploads are
 aborted after 1 day; every object is deleted on 2027-02-01.
 
-**Uploads.** Headshot JPEG, PNG or WebP up to **20 MB**; poster PDF up to **300 MB**, or JPEG
-or PNG up to **60 MB**; booklet PDF up to **1 GB**. Each file's type is checked as declared at
-`/start`, and again by its real first bytes in R2 at `/complete`; a mismatch closes the
-submission and removes its objects from R2 at once. HEIC is refused, because its metadata
-cannot be removed with Node builtins; an iPhone converts to JPEG by itself when the form does
-not list HEIC. `metadata.mjs` removes EXIF (GPS, device, time), XMP, IPTC and comments from
+**Uploads (since 2026-11-26, STITCH-2).** Two files. The headshot is cropped in the browser
+to a **600 x 800** JPEG tile and turned black and white there; only the tile is uploaded, up to
+**4 MB**, and `/complete` refuses any JPEG that is not exactly 600 x 800. The poster is **PNG
+only**, up to **250 MB**, and at least **3508 x 4967 pixels** either way up (A1 at 150 DPI);
+the browser reads the size from the PNG header before it uploads, and `/complete` reads it
+again from the object in R2. A DPI number in the file is not trusted. Each file's type is
+checked as declared at `/start`, and again by its real first bytes in R2 at `/complete`; a
+mismatch, or a poster too small, closes the submission and removes its objects from R2 at
+once. The browser decodes any JPEG, PNG or WebP headshot itself, so HEIC never reaches the
+service. `metadata.mjs` removes EXIF (GPS, device, time), XMP, IPTC and comments from
 every image before it is kept, leaving the pixels, the ICC colour profile and the JPEG
 orientation. An image it cannot parse is kept out of the download and flagged in the sheet,
-never stored with its metadata. PDFs are stored as sent. Files get generated names, live
-outside the web root, and leave the box only inside the committee's zips.
+never stored with its metadata. The poster is stripped as it streams down from R2, so a
+250 MB PNG never sits in the service's memory (a 200 MB poster peaked the service at 119 MB).
+Files get generated names, live outside the web root, and leave the box only inside the
+committee's zips. There is no booklet.
 
-**The Student Directory (since 2026-11-26).** A second tick box, separate from the
-consent, asks to be shown on the site's Student Directory (menu → Directory). Only then does
-the browser make small JPEG web copies of the headshot (1200 px) and of an image poster
-(2400 px) and upload them beside the originals, through the same `/start`, R2 and transfer
-path, metadata stripped like any image. Nothing is public until the committee approves it at
+**The Student Directory (since 2026-11-26).** A yes or no question, separate from the
+consent, asks to be shown on the site's Student Directory (menu → Directory). Only on a yes
+does the browser make a small JPEG web copy of the poster (2400 px) and upload it beside the
+PNG, through the same `/start`, R2 and transfer path, metadata stripped like any image. The
+headshot tile is already small and is served as it is. Nothing is public until the committee approves it at
 `/_s/review` (behind `SUBMISSIONS_KEY`); approvals are kept in `approvals.state` on
-`submissions-data`. The public routes are `/_s/directory.json`, `/_s/media/<id>/<kind>` and
-`/_s/poster/<id>`, and they serve only approved, opted-in profiles: name, degree, LinkedIn,
-project title, overview, the web copies, and a PDF poster by a **15-minute presigned R2
-GET**, never streamed up the home connection. Place of origin, booklets and the original
-files are never public. A resubmission waits for approval while the earlier approved profile
-stays up; a resubmission without the tick takes the profile down at once. The review page's
+`submissions-data`. The public routes are `/_s/directory.json` and `/_s/media/<id>/<kind>.jpg`, and they
+serve only approved, opted-in profiles: name, degree, LinkedIn, Instagram, website, project
+title, overview, the headshot tile and the poster's web copy. Email, place of origin, the
+exhibit answer and the poster PNG are never public. Every public link is an `https` address:
+the service refuses any other scheme, and the page checks again before it makes a link. A resubmission waits for approval while the earlier approved profile
+stays up; a resubmission that answers no takes the profile down at once. The review page's
 approve and hide buttons accept only same-origin requests, because a browser sends its saved
 Basic password with any request to the site. Public reads: **600 a minute** per address.
 Public image addresses end in their extension, so Cloudflare caches them at the edge for at
@@ -97,7 +112,7 @@ parse or an image does not build. Page edits remain advisory and never block.
 
 **Backups.** `submissions-data` (records and headshots) is archived nightly by
 `nch-backup-all`, age-encrypted to the public recipient and pushed to R2 with the write-only
-token. `submissions-files` (posters and booklets, tens of GB) is not: a nightly archive of it
+token. `submissions-files` (posters, tens of GB) is not: a nightly archive of it
 would fill the backup disk in days. Its off-box copy is the `stitch-uploads` bucket, which
 keeps every object until the deletion date.
 
@@ -112,11 +127,11 @@ keeps every object until the deletion date.
 - **No encryption at rest on the host disk.** The server's root volume is plain LVM, with no
   LUKS (audit 2026-09-01, item 1, still open). The submissions are not field-encrypted either:
   they are names, photos and overviews intended for wall labels, the website and social
-  media. They are held for ten weeks.
+  media, and personal emails held for the committee alone. They are held for ten weeks.
 - **Backups outlive the deletion date.** `nch-backup-all` keeps local copies for 14 days.
   The R2 copies are immutable and follow the bucket's own retention. On 2027-02-01, confirm
   that the last backup that holds submissions has aged out of both.
-- **The R2 copy of the posters and booklets is not an attacker-resistant backup.** The
+- **The R2 copy of the posters is not an attacker-resistant backup.** The
   service's own key can delete objects in `stitch-uploads`, so a compromised server could
   remove both copies. The nightly backups do resist that (write-only token), but cover only
   records and headshots. Accepted: the files are the graduates' own work, which they still
@@ -126,12 +141,10 @@ keeps every object until the deletion date.
   files upload to Cloudflare's storage service and that copies are held by Cloudflare.
 - **The `/start` budget can be spent by one campus address.** 120 a minute per address is
   shared by everyone behind that address. The browser retries a 429 after 20 s, three times.
-- **Presigned GETs for PDF posters in the directory (2026-11-26).** The service's
-  key signs a GET for one object for 15 minutes; anyone holding that URL in that window can
-  read that poster. Accepted: it is only ever signed for an approved, opted-in profile's
-  poster, which the person asked to publish.
-- **HEIC refused, PNG and WebP orientation not kept.** A sideways PNG from a phone is
-  possible but rare. The committee can rotate it.
+- **A browser without the poster's web copy.** A phone may run out of memory decoding a
+  200 MB PNG to make the 2400 px copy. The form then sends none, and that profile shows no
+  poster in the directory; the committee sees "no web copy" on the review page and has the
+  PNG in the poster download.
 
 ## Lane A record (2026-09-29 to 2026-11-25)
 
