@@ -659,12 +659,12 @@
                     <img id="xTileImg" alt="Your headshot tile, as it will appear">
                     <button type="button" class="xfile" id="xRecrop">[ Adjust crop ]</button>
                   </div>
-                  <p class="xhint" id="xPhotoName">JPG, PNG or WebP, at least 600 × 800 pixels.</p>
+                  <p class="xhint" id="xPhotoName">JPG, PNG or WebP.</p>
                   <p class="xerr" id="xPhotoErr" aria-live="polite"></p>
                 </div>
                 <div class="xfield">
                   <span class="xlabel" id="xPosterLabel">Project images <span class="opt">(optional)</span></span>
-                  <p class="xhint" id="xPosterHint">Up to three images of your project: a poster, drawings, renders, models, anything. Each must be a PNG at 150 DPI or more, up to 250 MB.</p>
+                  <p class="xhint" id="xPosterHint">Up to three images of your project: a poster, drawings, renders, models, anything. Each must be a PNG, up to 250 MB.</p>
                   <div class="ximg">
                     <input id="xPoster" name="poster" type="file" accept="image/png,.png" class="sr-only xfilein" aria-labelledby="xPosterLabel xPosterBtn" aria-describedby="xPosterHint xPosterName xPosterErr">
                     <label for="xPoster" class="xfile" id="xPosterBtn">[ Choose image 1 ]</label>
@@ -1682,35 +1682,21 @@
       answered();
     }));
 
-    // Project images, up to three, all optional. Each is a PNG at 150 DPI or
-    // more, read from the file's pHYs chunk here and checked again by the server.
-    // Keep in step with server.mjs.
+    // Project images, up to three, all optional. Each must be a PNG (read from
+    // the file's header here and checked again by the server); there is no
+    // DPI, pixel size or quality rule. Keep in step with server.mjs.
     const MB = 1024 * 1024;
-    const IMG = { maxMB: 250, minDpi: 150 };
+    const IMG = { maxMB: 250 };
     const TILE = { w: 600, h: 800 };
     const IMAGES = [["poster", "xPoster", "posterWeb"], ["poster2", "xPoster2", "posterWeb2"], ["poster3", "xPoster3", "posterWeb3"]];
     const sizeText = n => n >= 1024 * MB ? (n / 1024 / MB).toFixed(2) + " GB" : (n / MB).toFixed(1) + " MB";
-    // a PNG's size and DPI; dpi null when the file records none
+    // a PNG's pixel size from its header, or null if it is not a PNG
     async function pngInfo(file) {
-      for (const n of [64 * 1024, 4 * MB]) {
-        const b = new Uint8Array(await file.slice(0, n).arrayBuffer());
-        const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-        if (b.length < 24 || sig.some((v, i) => b[i] !== v) || String.fromCharCode(...b.slice(12, 16)) !== "IHDR") return null;
-        const v = new DataView(b.buffer);
-        const out = { w: v.getUint32(16), h: v.getUint32(20), dpi: null };
-        let i = 8, reached = false;
-        while (i + 8 <= b.length) {
-          const len = v.getUint32(i), type = String.fromCharCode(...b.slice(i + 4, i + 8));
-          if (type === "IDAT" || type === "IEND") { reached = true; break; }
-          if (type === "pHYs" && i + 17 <= b.length) {
-            if (b[i + 16] === 1) out.dpi = Math.min(v.getUint32(i + 8), v.getUint32(i + 12)) * 0.0254;
-            reached = true; break;
-          }
-          i += 12 + len;
-        }
-        if (reached || b.length >= file.size) return out;
-      }
-      return null;
+      const b = new Uint8Array(await file.slice(0, 24).arrayBuffer());
+      const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+      if (b.length < 24 || sig.some((v, i) => b[i] !== v) || String.fromCharCode(...b.slice(12, 16)) !== "IHDR") return null;
+      const v = new DataView(b.buffer);
+      return { w: v.getUint32(16), h: v.getUint32(20) };
     }
     async function checkImage(f) {
       if (!f) return { problem: "" };
@@ -1718,8 +1704,6 @@
       const d = await pngInfo(f).catch(() => null);
       if (!d) return { problem: "Project images must be PNGs. Please export it from your design program as a PNG." };
       if (f.size > IMG.maxMB * MB) return { problem: "That image is too big. The limit is " + IMG.maxMB + " MB. Try exporting the PNG again with compression on." };
-      if (!d.dpi) return { problem: "That image has no DPI recorded. Please export it again as a PNG at " + IMG.minDpi + " DPI or more.", d };
-      if (d.dpi < IMG.minDpi - 0.5) return { problem: "That image is " + Math.round(d.dpi) + " DPI. Please export it again as a PNG at " + IMG.minDpi + " DPI or more.", d };
       return { problem: "", d };
     }
     const imageChecks = {};
@@ -1732,7 +1716,7 @@
         clear.hidden = !f;
         showError(key, "");
         const c = imageChecks[key] = checkImage(f);
-        c.then(r => { if (input.files[0] === f) { showError(key, f ? r.problem : ""); if (r.d && !r.problem) $(id + "Name").textContent += ", " + r.d.w + " × " + r.d.h + " px, " + Math.round(r.d.dpi) + " DPI"; } });
+        c.then(r => { if (input.files[0] === f) { showError(key, f ? r.problem : ""); if (r.d && !r.problem) $(id + "Name").textContent += ", " + r.d.w + " × " + r.d.h + " px"; } });
       };
       input.addEventListener("change", update);
       clear.addEventListener("click", () => { input.value = ""; update(); $(id + "Btn").focus(); });
@@ -1810,11 +1794,6 @@
       let bmp;
       try { bmp = await createImageBitmap(f); } catch {
         showError("photo", "That photo could not be opened. Please choose a JPG, PNG or WebP.");
-        return;
-      }
-      if (bmp.width < TILE.w || bmp.height < TILE.h) {
-        showError("photo", "That photo is " + bmp.width + " × " + bmp.height + " pixels. It needs to be at least 600 × 800. Please choose a larger one.");
-        bmp.close?.();
         return;
       }
       const old = crop.bmp;

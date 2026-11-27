@@ -46,13 +46,10 @@ aborted after 1 day; every object is deleted on 2027-02-01.
 to a **600 x 800** JPEG tile and turned black and white there; only the tile is uploaded, up to
 **4 MB**, and `/complete` refuses any JPEG that is not exactly 600 x 800. The project images
 (optional, up to three: a poster, drawings, renders, anything) are **PNG only**, up to **250 MB**
-each, at **150 DPI or more** as recorded in the PNG's `pHYs` chunk; a PNG with no DPI recorded
-is refused. No pixel size is set, because an image may be anything. The browser reads the DPI
-before it uploads, and `/complete` reads it again from the object in R2 (the first 64 KB, or
-4 MB if a large colour profile or XMP block puts `pHYs` further in). The DPI is the file's own
-claim: it is the committee's rule for print quality, not a security control. Each file's type is
+each. There is no DPI, pixel size or quality rule (removed 2026-11-27 at Bijin's request); only
+the type is checked. Each file's type is
 checked as declared at `/start`, and again by its real first bytes in R2 at `/complete`; a
-mismatch, or an image under 150 DPI, closes the submission and removes its objects from R2 at
+mismatch closes the submission and removes its objects from R2 at
 once. The browser decodes any JPEG, PNG or WebP headshot itself, so HEIC never reaches the
 service. `metadata.mjs` removes EXIF (GPS, device, time), XMP, IPTC and comments from
 every image before it is kept, leaving the pixels, the ICC colour profile and the JPEG

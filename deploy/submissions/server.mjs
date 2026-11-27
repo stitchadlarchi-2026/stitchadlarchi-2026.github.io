@@ -7,7 +7,7 @@
  * their record is stored at once. Anyone else sends their details and two
  * files: a 600 x 800 black-and-white headshot tile, cropped in their browser,
  * and, if they like, up to three PNG project images (a poster, drawings,
- * renders, anything) at 150 DPI or more. An image runs to hundreds of
+ * renders, anything), PNG only. An image runs to hundreds of
  * megabytes, and stitchexhibition.com sits behind a Cloudflare plan that
  * refuses any request body over 100 MB and behind a home connection, so the
  * files never come through here at all:
@@ -94,14 +94,6 @@ const r2 = process.env.R2_BUCKET
   : null;
 
 const MB = 1024 * 1024;
-/**
- * A project image's smallest resolution, read from the PNG's pHYs chunk. An
- * image may be anything (a poster, a drawing, a render), so no pixel size is
- * set; the DPI the file declares is the rule the committee asked for. A PNG
- * with no DPI recorded is refused. 149.5 allows for 150 DPI stored as a whole
- * number of pixels per metre (5905 or 5906). Keep in step with index.html.
- */
-const MIN_DPI = 150;
 /** The headshot tile the browser crops to: portrait, black and white. Keep in step with index.html. */
 const TILE = { width: 600, height: 800 };
 /**
@@ -286,35 +278,11 @@ function jpegSize(buf) {
 }
 
 /**
- * A PNG's resolution in DPI, from its pHYs chunk (the lower of the two axes).
- * null: the file records none (or not in metres). undefined: the bytes given
- * end before the image data starts, so read further and ask again.
+ * Why a file is wrong for its kind, or ''. A project image is checked only for
+ * being a real PNG: no DPI, pixel size or quality rule (Bijin, 2026-11-27).
  */
-function pngDpi(buf) {
-  let i = 8;
-  while (i + 8 <= buf.length) {
-    const len = buf.readUInt32BE(i);
-    const type = buf.toString('latin1', i + 4, i + 8);
-    if (type === 'IDAT' || type === 'IEND') return null; // pHYs must come before the image data
-    if (type === 'pHYs') {
-      if (i + 17 > buf.length) return undefined;
-      if (buf[i + 16] !== 1) return null;
-      return Math.min(buf.readUInt32BE(i + 8), buf.readUInt32BE(i + 12)) * 0.0254;
-    }
-    i += 12 + len;
-  }
-  return undefined;
-}
-
-/** Why a file's pixel size or resolution is wrong for its kind, or ''. */
 function sizeProblem(kind, ext, buf) {
-  if (KINDS[kind].image) {
-    const label = KINDS[kind].label;
-    if (!pngSize(buf)) return `That ${label} could not be read. Please export it again as a PNG.`;
-    const dpi = pngDpi(buf);
-    if (!dpi) return `That ${label} has no DPI recorded. Please export it again as a PNG at ${MIN_DPI} DPI or more.`;
-    if (dpi < MIN_DPI - 0.5) return `That ${label} is ${Math.round(dpi)} DPI. Please export it again as a PNG at ${MIN_DPI} DPI or more.`;
-  }
+  if (KINDS[kind].image && !pngSize(buf)) return `That ${KINDS[kind].label} could not be read. Please export it again as a PNG.`;
   if (kind === 'photo') {
     const d = ext === 'jpg' ? jpegSize(buf) : null;
     if (!d || d.width !== TILE.width || d.height !== TILE.height) return 'Your headshot did not crop properly. Please choose it again.';
@@ -695,10 +663,7 @@ async function finish(r, body, names) {
       await r2.completeMultipart(f.key, f.uploadId, etags);
       const size = await r2.head(f.key);
       // 64 KB reaches a JPEG's frame header past any APP segments; a PNG's is at byte 16.
-      let head = await r2.firstBytes(f.key, 64 * 1024);
-      // A PNG's DPI sits before its image data, past any colour profile and
-      // text chunks; a big profile or XMP block can push it past 64 KB.
-      if (KINDS[kind].image && fileType(head) === 'png' && pngDpi(head) === undefined && f.size > head.length) head = await r2.firstBytes(f.key, 4 * MB);
+      const head = await r2.firstBytes(f.key, 64 * 1024);
       const type = fileType(head);
       if (size !== f.size || type !== f.ext) {
         console.log(`complete ${r.id}: ${kind} is ${type ?? 'unknown'} ${size}, declared ${f.ext} ${f.size}`);
