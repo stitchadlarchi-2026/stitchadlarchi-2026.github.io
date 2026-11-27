@@ -112,11 +112,8 @@ picks the queue up where it stopped.
 - **Files:** the headshot is cropped in the browser (a crop window to move
   and zoom it) to a 600 x 800 black-and-white JPEG tile, and only the tile is
   sent; the service refuses any other size. Project images (kinds `poster`,
-  `poster2`, `poster3`, all optional) are PNG only, up to 250 MB each, at
-  150 DPI or more as recorded in the PNG's `pHYs` chunk (no pixel minimum; a
-  PNG with no DPI is refused): the browser reads it before uploading and the
-  service reads it again in R2. To change the rule, change `MIN_DPI` in
-  `server.mjs` and `IMG` in `index.html` together. Types are checked twice: as declared at
+  `poster2`, `poster3`, all optional) are PNG only, up to 250 MB each, with
+  no DPI, pixel size or quality rule. Types are checked twice: as declared at
   start, and by each file's real first bytes in R2 at complete. Image metadata
   (location, camera, text) is removed before anything is kept; each project image is
   stripped as it streams, never held in memory. There is no booklet.

@@ -6,7 +6,7 @@
     "personal email addresses, for the committee to contact graduates; never public",
     "answers to 'exhibit on the night' and 'Student Directory'",
     "600 x 800 black-and-white headshot tiles, cropped in the browser; metadata removed",
-    "optional project images, up to three, PNG only, 150 DPI or more as recorded in the file, up to 250 MB each",
+    "optional project images, up to three, PNG only (type checked, no quality rule), up to 250 MB each",
     "optional LinkedIn, Instagram and website links, and place of origin",
     "project titles and overviews (up to 150 words)",
     "keyed HMAC of client IP addresses, in memory only, for rate limits",
