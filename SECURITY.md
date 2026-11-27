@@ -119,8 +119,56 @@ token. `submissions-files` (posters, tens of GB) is not: a nightly archive of it
 would fill the backup disk in days. Its off-box copy is the `stitch-uploads` bucket, which
 keeps every object until the deletion date.
 
+## The admin console (since 2026-11-27)
+
+`admin.stitchexhibition.com` is the console for Breeze, Bijin and the STITCH account: every
+submission, edits to any field, Student Directory approve and hide, removing an image,
+deleting a submission, the downloads, and a live view of the site. It is `console.mjs`, a
+third port (9092) on the submissions service, because that process owns the records and
+must apply the edits; nginx serves it on its own `server_name`, through the same tunnel.
+
+**Sign-in.** An emailed one-time code, to three addresses only (`CONSOLE_EMAILS` in
+`compose.yaml`): `breezemathew110@gmail.com`, `bijin@nchconsultancy.com`,
+`stitch.adl.archi@gmail.com`. Bijin asked for this instead of Cloudflare Access on
+2026-11-27. An address not on the list gets the same answer and no email, so the page does
+not reveal who may sign in. A code is six digits from `crypto.randomInt`, held only as a
+SHA-256, valid ten minutes and once, and dies after five wrong tries. Each address can be
+sent five codes an hour, and each network can make twenty sign-in requests in ten minutes.
+The mail goes through Resend with NCH's **send-only** key (it cannot read mail, list keys
+or change domains), from NCH's verified sending address; both are in `.env` as
+`RESEND_API_KEY` and `CONSOLE_MAIL_FROM`. NCH runs this infrastructure, so this is NCH's
+own key, not another client's.
+
+**Sessions.** A 32-byte random token in a cookie that is `HttpOnly`, `Secure`,
+`SameSite=Strict` and host-only on the admin host, so the public site never sees it. The
+service keeps only the token's SHA-256, in `console-sessions.state` on `submissions-data`
+(so a redeploy does not sign anyone out), for twelve hours. Every request that changes
+anything must carry the console's own `Origin` and an `X-Stitch: 1` header, which a form or
+image on another site cannot send. The console page runs only its own script: its CSP is
+`default-src 'none'` with `script-src 'self'`, and every value from a submission is put on
+the page as text, never as HTML. Edits pass the same checks as the form (email shape, https
+links only, the 150-word overview).
+
+**Audit.** Every sign-in and every change (edit with before and after, approve, hide,
+image removed, submission deleted) is appended to `audit.log` on `submissions-data`, with
+who and when, and shown in the console's change log. It is deleted with everything else on
+the deletion date. Deleting a submission removes its record, its files on the box and its
+objects in R2 at once; the nightly backups keep their copy until they age out (14 days).
+
+**Live view.** `beacon.js`, which nginx already adds to the public page, now also sends a
+heartbeat to `/_s/ping` every 20 seconds while a tab is open: a random id made fresh on
+each page load and kept only in a variable, the page (home, info, links, directory,
+sponsors), and whether the form is open and being filled in, uploading, or just submitted.
+No cookie, no storage, no IP kept; the service holds it in memory for 50 seconds, and at
+most 5000 tabs. That is what "on the site now" counts. The activity feed (started,
+finished, failed, saved, admin changes) is the last 60 events, in memory only.
+
 ## Accepted risks (2026-11-25, revisit 2027-01-31)
 
+- **Email codes, not Cloudflare Access, on the admin console (2026-11-27).** Anyone who
+  controls one of the three inboxes can sign in and change or delete submissions. Bijin
+  chose this on 2026-11-27. Mitigations: a three-address allowlist, ten-minute single-use
+  codes, rate limits, twelve-hour sessions, and the audit log of every change.
 - **One shared password on the committee download, no MFA.** The baseline asks for
   Cloudflare Access on a client-facing admin path. Bijin chose a password only on
   2026-11-25. Mitigations: HTTPS only, a 32-character random key in `.env`, a

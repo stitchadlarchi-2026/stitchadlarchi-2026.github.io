@@ -3,7 +3,8 @@
 FROM node:22-alpine
 
 WORKDIR /app
-COPY server.mjs metadata.mjs r2.mjs zip.mjs ./
+COPY server.mjs metadata.mjs r2.mjs zip.mjs console.mjs ./
+COPY console ./console
 
 # The volumes mount here: /data for records and headshots (backed up nightly),
 # /files for posters and booklets. Made in the image and owned by `node`, so
@@ -12,5 +13,5 @@ RUN mkdir -p /data /files && chown node:node /data /files
 VOLUME /data /files
 
 USER node
-EXPOSE 8081 9091
+EXPOSE 8081 9091 9092
 CMD ["node", "server.mjs"]

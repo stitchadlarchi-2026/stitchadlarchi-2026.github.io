@@ -163,6 +163,23 @@ answer 404. Five wrong passwords in a minute lock that address out for the rest
 of the minute. If the service is down, the page is unaffected and the form says
 it could not send.
 
+### Admin console
+
+`https://admin.stitchexhibition.com`: sign in with one of the addresses in
+`CONSOLE_EMAILS` (`compose.yaml`); a six-digit code arrives by email. It shows
+who is on the site right now (by page, filling in the form, uploading), the
+upload pipeline, an activity feed, and every submission. Click a row to edit
+any field, approve or hide it in the Student Directory, download or remove an
+image, or delete the submission (type the name to confirm). Every change goes
+to `/data/audit.log` and the console's change log. The decisions are in
+`SECURITY.md`; the code is `deploy/submissions/console.mjs` and
+`deploy/submissions/console/`.
+
+To add or remove an admin, edit `CONSOLE_EMAILS` in `compose.yaml` and push.
+Locally, `node deploy/submissions/dev.mjs` runs the console at
+`http://localhost:8001`: sign in as `dev@example.com`, and the code prints in
+that terminal instead of being emailed.
+
 ### Student Directory
 
 Graduates who answer yes to the Student Directory also upload a small JPEG

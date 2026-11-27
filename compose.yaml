@@ -101,6 +101,14 @@ services:
       R2_BUCKET: ${R2_BUCKET:?set R2_BUCKET in .env}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID in .env}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY in .env}
+      # The admin console at admin.stitchexhibition.com (console.mjs). Sign-in
+      # codes go by email to these addresses only, sent through Resend with a
+      # send-only key.
+      CONSOLE_PORT: '9092'
+      CONSOLE_EMAILS: breezemathew110@gmail.com,bijin@nchconsultancy.com,stitch.adl.archi@gmail.com
+      CONSOLE_ORIGIN: https://admin.stitchexhibition.com
+      CONSOLE_MAIL_FROM: ${CONSOLE_MAIL_FROM:?set CONSOLE_MAIL_FROM in .env}
+      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY in .env}
     volumes:
       - submissions-data:/data
       - submissions-files:/files

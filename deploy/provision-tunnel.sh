@@ -2,7 +2,7 @@
 # Idempotent Cloudflare provisioning for the STITCH exhibition site.
 #
 # Creates, or reuses, a named tunnel; points its ingress at the nginx container;
-# upserts a proxied CNAME for the apex and for www; and writes the tunnel token
+# upserts a proxied CNAME for the apex, www and admin; and writes the tunnel token
 # into the env file. Every step is lookup-then-upsert, so it is safe to re-run.
 #
 # Reads the account credentials from the grounding repo's shared env:
@@ -22,7 +22,7 @@ set -a; source "$SHARED"; set +a
 TUNNEL_NAME="${TUNNEL_NAME:-stitch-exhibition}"
 ZONE_NAME="${ZONE_NAME:-stitchexhibition.com}"
 ORIGIN="${ORIGIN:-http://web:80}"
-HOSTS=("$ZONE_NAME" "www.$ZONE_NAME")
+HOSTS=("$ZONE_NAME" "www.$ZONE_NAME" "admin.$ZONE_NAME")   # admin: the console, its own server block in nginx.conf
 
 API="https://api.cloudflare.com/client/v4"
 AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
