@@ -42,7 +42,11 @@ if (!process.env.R2_BUCKET) {
 
 const child = spawn(process.execPath, [join(here, 'server.mjs')], {
   stdio: 'inherit',
-  env: { ...process.env, ...r2Env, DATA_DIR: join(root, '.dev-submissions', 'data'), FILES_DIR: join(root, '.dev-submissions', 'files'), SUBMISSIONS_KEY: 'dev', TURNSTILE_SECRET: '', DISK_FLOOR_GB: process.env.DISK_FLOOR_GB ?? '1', FORM_PORT: '18081', ADMIN_PORT: '19091' },
+  env: { ...process.env, ...r2Env, DATA_DIR: join(root, '.dev-submissions', 'data'), FILES_DIR: join(root, '.dev-submissions', 'files'), SUBMISSIONS_KEY: 'dev', TURNSTILE_SECRET: '', DISK_FLOOR_GB: process.env.DISK_FLOOR_GB ?? '1', FORM_PORT: '18081', ADMIN_PORT: '19091',
+    // The admin console on its own port, as admin.stitchexhibition.com is its own host.
+    // No mail key here: the sign-in code is printed in this terminal instead.
+    CONSOLE_PORT: '19092', CONSOLE_EMAILS: process.env.CONSOLE_EMAILS ?? 'dev@example.com', CONSOLE_ORIGIN: `http://localhost:${Number(process.env.PORT ?? 8000) + 1}`,
+    RESEND_API_KEY: '', DEV_LOG_CODES: '1', USAGE_URL: 'http://127.0.0.1:1/none' },
 });
 
 const types = {
@@ -57,6 +61,17 @@ const routes = {
   '/_s/directory.json': [18081, '/directory.json'],
 };
 const prefixes = [['/_s/media/', 18081], ['/_s/review', 19091]];
+routes['/_s/ping'] = [18081, '/ping'];
+
+// The admin console, as nginx serves admin.stitchexhibition.com: everything to the console port.
+createServer((req, res) => {
+  const up = request({ host: '127.0.0.1', port: 19092, path: req.url, method: req.method, headers: req.headers }, (r) => {
+    res.writeHead(r.statusCode ?? 502, r.headers);
+    r.pipe(res);
+  });
+  up.on('error', () => res.writeHead(503).end('console offline'));
+  req.pipe(up);
+}).listen(PORT + 1, '127.0.0.1', () => console.log(`admin console: http://localhost:${PORT + 1} (sign in as dev@example.com; the code prints here)`));
 
 createServer(async (req, res) => {
   const path = decodeURIComponent((req.url ?? '/').split('?')[0]);
@@ -71,6 +86,11 @@ createServer(async (req, res) => {
     req.pipe(up);
     return;
   }
+  if (path === '/_u.js') {
+    res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' });
+    return createReadStream(join(root, 'deploy', 'usage', 'beacon.js')).pipe(res);
+  }
+  if (path === '/_u/e') return void res.writeHead(204).end();
   let file = normalize(join(root, path === '/' ? 'index.html' : path));
   if (!file.startsWith(root) || /[\\/](deploy|\.git|\.dev-submissions)([\\/]|$)/.test(file.slice(root.length))) {
     res.writeHead(404).end();
@@ -89,7 +109,8 @@ createServer(async (req, res) => {
     // Cloudflare's test key, which always passes; the server skips its own
     // check here because dev runs it with no TURNSTILE_SECRET.
     const html = await readFile(file, 'utf8');
-    res.end(html.replace(/data-sitekey="[^"]*"/g, 'data-sitekey="1x00000000000000000000AA"'));
+    // ...and add the usage beacon, as nginx does, for the console's live view.
+    res.end(html.replace(/data-sitekey="[^"]*"/g, 'data-sitekey="1x00000000000000000000AA"').replace('</body>', '<script src="/_u.js" defer></script></body>'));
     return;
   }
   createReadStream(file).pipe(res);

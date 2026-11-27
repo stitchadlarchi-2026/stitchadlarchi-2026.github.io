@@ -48,6 +48,12 @@
  *                    /status, /review, /review/media/<id>/<kind>
  *               POST /review/<id>/(approve|hide)
  *               GET  /health                        (healthcheck, local only)
+ *   CONSOLE_PORT the admin console, admin.stitchexhibition.com (console.mjs)
+ *
+ * FORM_PORT also takes POST /ping, the page's heartbeat: a random id per open
+ * tab (made fresh each page load, never stored by the page), the page it is
+ * on and whether the form is being filled in or uploading. Held in memory for
+ * a minute, for the console's "on the site now"; nothing is written down.
  *
  * Node builtins only: no package.json, no node_modules.
  */
@@ -62,6 +68,7 @@ import { pipeline } from 'node:stream/promises';
 import { PngStrip, strip } from './metadata.mjs';
 import { R2 } from './r2.mjs';
 import { ZipStream, crc32, workbook } from './zip.mjs';
+import { startConsole } from './console.mjs';
 
 const FORM_PORT = Number(process.env.FORM_PORT ?? 8081);
 const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? 9091);
@@ -155,6 +162,25 @@ const MAX_WORDS = 150;
 const CONSENT = 'exhibition labels and catalogue if exhibiting, stitchexhibition.com, STITCH social media; email for committee contact only, never published; deleted after 31 January 2027';
 
 const salt = randomBytes(32);
+
+// ---------------------------------------------------------------- live view
+/** Open tabs by their heartbeat id: { page, activity, at }. Memory only. */
+const presence = new Map();
+const PRESENCE_MS = 50_000;
+const PRESENCE_MAX = 5000;
+const PING_PER_MINUTE = 3000; // a whole campus behind one address, three beats a minute each
+const pingBudget = new Map();
+const PAGES = new Set(['home', 'info', 'links', 'directory', 'sponsors', 'other']);
+const ACTIVITIES = new Set(['browsing', 'form', 'uploading', 'submitted']);
+/** What has happened lately, newest last, for the console's feed. Memory only. */
+const events = [];
+function activity(kind, text) {
+  events.push({ at: new Date().toISOString(), kind, text });
+  if (events.length > 60) events.shift();
+}
+/** Bumped on every change to a record or a decision, so the console knows to fetch again. */
+let changes = 0;
+const mask = (email) => String(email).replace(/^(.).*?(@.*)$/, '$1…$2');
 const budget = new Map();
 /** Directory requests one address may make in a minute: generous for browsing, not for scraping. */
 const PUBLIC_PER_MINUTE = 600;
@@ -324,6 +350,7 @@ function minuteTick() {
     budget.clear();
     authFails.clear();
     publicBudget.clear();
+    pingBudget.clear();
     budgetSince = now;
   }
 }
@@ -411,6 +438,7 @@ const saving = new Map();
 function save(r) {
   records.set(r.id, r);
   profilesCache = null;
+  changes += 1;
   const turn = (saving.get(r.id) ?? Promise.resolve()).then(async () => {
     const { tokenHash, ...rest } = r;
     const body = JSON.stringify({ ...rest, tokenHash: tokenHash ? Buffer.from(tokenHash).toString('hex') : undefined }, null, 2);
@@ -564,6 +592,7 @@ async function declined(res, { name, email }) {
   const record = { id: newId(at), submittedAt: at, completedAt: at, storedAt: at, state: 'stored', name, email, exhibit: false, listed: false, files: {} };
   await save(record);
   console.log(`declined ${record.id}`);
+  activity('declined', `${name}: not exhibiting, not in the directory`);
   return json(res, 200, { ok: true, done: true, names: {} });
 }
 
@@ -611,6 +640,7 @@ async function openUploads(res, { name, email, exhibit, listed, degree, linkedin
   }
   await save(record);
   console.log(`start ${id} (${Object.entries(files).map(([k, f]) => `${k} ${f.size}`).join(', ')})`);
+  activity('start', `${name}: started uploading ${Object.keys(files).filter((k) => !KINDS[k].optional).length} files (${Math.round(Object.values(files).reduce((n, f) => n + f.size, 0) / MB)} MB)`);
   return json(res, 200, answer);
 }
 
@@ -702,6 +732,7 @@ async function finish(r, body, names) {
     r.state = 'failed';
     delete r.tokenHash;
     await save(r);
+    activity('failed', `${r.name}: ${Object.values(problems)[0]}`);
     return { status: 422, body: { error: 'Some files need another look.', fields: problems, restart: true } };
   }
   r.state = 'uploaded';
@@ -711,6 +742,7 @@ async function finish(r, body, names) {
   for (const f of Object.values(r.files)) delete f.uploadId;
   await save(r);
   console.log(`complete ${r.id}`);
+  activity('complete', `${r.name}: upload finished`);
   kick();
   return { status: 200, body: { ok: true, names } };
 }
@@ -828,6 +860,7 @@ function kick() {
         if (Object.values(job.r.files).every((f) => f.stored)) {
           job.r.state = 'stored';
           job.r.storedAt = new Date().toISOString();
+          activity('stored', `${job.r.name}: files saved`);
         }
         await save(job.r);
         transfer.failures = 0;
@@ -997,12 +1030,13 @@ function shownRecord(id) {
   return null;
 }
 
-async function sendFile(res, kind, f, cache) {
+async function sendFile(res, kind, f, cache, disposition) {
   res.writeHead(200, {
     'content-type': MIME[f.ext],
     'content-length': f.storedSize,
     'cache-control': cache,
     'x-content-type-options': 'nosniff',
+    ...(disposition ? { 'content-disposition': disposition } : {}),
   });
   await pipeline(createReadStream(join(KINDS[kind].dir, f.file)), res);
 }
@@ -1128,14 +1162,52 @@ async function decide(req, res, id, action) {
   }
   const r = records.get(id);
   if (!r || r.state !== 'stored') return res.writeHead(404).end();
-  approvals[id] = action === 'approve' ? 'approved' : 'hidden';
+  await setDecision(id, action);
+  res.writeHead(303, { location: '/_s/review', 'cache-control': 'no-store' });
+  res.end();
+}
+
+/** Approve, hide, or (null) forget the committee's decision, and write it down. */
+async function setDecision(id, action) {
+  if (action) approvals[id] = action === 'approve' ? 'approved' : 'hidden';
+  else delete approvals[id];
   profilesCache = null;
+  changes += 1;
+  await saveApprovals();
+  console.log(`review ${id}: ${approvals[id] ?? 'cleared'}`);
+}
+
+async function saveApprovals() {
   const tmp = join(DATA, `.approvals.${randomBytes(4).toString('hex')}`);
   await writeFile(tmp, JSON.stringify(approvals, null, 2));
   await rename(tmp, APPROVALS());
-  console.log(`review ${id}: ${approvals[id]}`);
-  res.writeHead(303, { location: '/_s/review', 'cache-control': 'no-store' });
-  res.end();
+}
+
+/** Remove some of a submission's files: from this box and from R2. */
+async function removeFiles(r, kinds) {
+  for (const kind of kinds) {
+    const f = r.files[kind];
+    if (!f) continue;
+    if (f.file) await rm(join(KINDS[kind]?.dir ?? FILES, f.file), { force: true });
+    if (f.uploadId) await r2?.abortMultipart(f.key, f.uploadId).catch(() => {});
+    if (f.key) await r2?.delete(f.key).catch((e) => console.error(`remove ${r.id} ${kind}: R2`, e.message));
+    delete r.files[kind];
+  }
+  await save(r);
+}
+
+/** Delete a submission entirely: its files here and in R2, its record, its decision. */
+async function forget(r) {
+  await removeFiles(r, Object.keys(r.files ?? {}));
+  await rm(join(DATA, `${r.id}.json`), { force: true });
+  records.delete(r.id);
+  if (approvals[r.id]) {
+    delete approvals[r.id];
+    await saveApprovals();
+  }
+  profilesCache = null;
+  changes += 1;
+  console.log(`forgot ${r.id}`);
 }
 
 // ---------------------------------------------------------------- export
@@ -1276,6 +1348,7 @@ const formServer = createServer((req, res) => {
       else res.destroy();
     });
   }
+  if (req.method === 'POST' && path === '/ping') return ping(req, res);
   const handler = req.method === 'POST' && { '/start': start, '/complete': complete }[path];
   if (!handler) return res.writeHead(404).end();
   handler(req, res).catch((e) => {
@@ -1284,6 +1357,35 @@ const formServer = createServer((req, res) => {
     if (!res.headersSent) json(res, 500, { error: 'Something went wrong. Please try again.' });
   });
 });
+
+/** POST /ping: "<id> <page> <activity>", a tab's heartbeat. Always 204. */
+function ping(req, res) {
+  let body = '';
+  req.setEncoding('utf8');
+  req.on('data', (c) => {
+    body += c;
+    if (body.length > 100) req.destroy();
+  });
+  req.on('end', () => {
+    res.writeHead(204, { 'cache-control': 'no-store' }).end();
+    minuteTick();
+    const who = fingerprint(req);
+    const spent = pingBudget.get(who) ?? 0;
+    if (spent >= PING_PER_MINUTE) return;
+    if (pingBudget.size < 50_000) pingBudget.set(who, spent + 1);
+    const m = /^([A-Za-z0-9_-]{8,40}) ([a-z]{2,12}) ([a-z]{2,12})$/.exec(body.trim());
+    if (!m) return;
+    const page = PAGES.has(m[2]) ? m[2] : 'other';
+    if (m[3] === 'gone') return void presence.delete(m[1]);
+    if (!ACTIVITIES.has(m[3])) return;
+    if (!presence.has(m[1]) && presence.size >= PRESENCE_MAX) {
+      const now = Date.now();
+      for (const [k, v] of presence) if (now - v.at > PRESENCE_MS) presence.delete(k);
+      if (presence.size >= PRESENCE_MAX) return;
+    }
+    presence.set(m[1], { page, activity: m[3], at: Date.now() });
+  });
+}
 
 const ADMIN = { '/export': (res) => exportMain(res), '/export/posters': (res) => exportImages(res), '/status': async (res) => json(res, 200, statusReport()), '/review': (res) => reviewPage(res) };
 
@@ -1329,6 +1431,30 @@ every(60 * 60 * 1000, purgeIfDue, 'retention');
 every(15 * 60 * 1000, janitor, 'janitor');
 every(30 * 1000, async () => kick(), 'transfer');
 kick();
+every(60 * 1000, async () => {
+  const now = Date.now();
+  for (const [k, v] of presence) if (now - v.at > PRESENCE_MS) presence.delete(k);
+}, 'presence');
+
+if (process.env.CONSOLE_PORT && process.env.CONSOLE_EMAILS) {
+  await startConsole(
+    {
+      DATA, records, all, save, profiles, latestStored, usable, statusReport, KINDS, IMAGES, WEB_OF, LIMITS, MAX_WORDS,
+      approvals: () => approvals, decide: setDecision, removeFiles, forget, sendFile, exportMain, exportImages, fileSafe,
+      fingerprint, mask, presence, PRESENCE_MS, activity, recent: () => events.slice().reverse(), version: () => changes,
+      USAGE_URL: process.env.USAGE_URL ?? 'http://usage:9090/usage',
+      check: { email: emailAddress, linkedin: linkedinUrl, instagram: instagramUrl, website: websiteUrl, line: oneLine, text: clean },
+    },
+    {
+      port: Number(process.env.CONSOLE_PORT),
+      emails: process.env.CONSOLE_EMAILS.split(','),
+      origin: process.env.CONSOLE_ORIGIN ?? 'https://admin.stitchexhibition.com',
+      mailFrom: process.env.CONSOLE_MAIL_FROM ?? '',
+      resendKey: process.env.RESEND_API_KEY ?? '',
+      logCodes: process.env.DEV_LOG_CODES === '1',
+    },
+  );
+}
 formServer.listen(FORM_PORT, '0.0.0.0', () => console.log(`form on :${FORM_PORT} (/start, /complete)${r2 ? '' : ' — no R2: uploads off'}`));
 adminServer.listen(ADMIN_PORT, '0.0.0.0', () => console.log(`admin on :${ADMIN_PORT}${KEY ? '' : ' (no SUBMISSIONS_KEY: export off)'}`));
 

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>STITCH Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/console.css">
+<script src="/console.js" defer></script>
+</head>
+<body>
+
+<!-- Sign in -->
+<main class="signin" id="signin" hidden>
+  <div class="signin-box">
+    <h1>STITCH <span>Admin</span></h1>
+    <form id="emailForm" novalidate>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" inputmode="email" required>
+      <button type="submit" class="btn">[ Send me a code ]</button>
+    </form>
+    <form id="codeForm" hidden novalidate>
+      <p class="hint" id="codeHint"></p>
+      <label for="code">Code</label>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+      <button type="submit" class="btn">[ Sign in ]</button>
+      <button type="button" class="link" id="again">Use a different email</button>
+    </form>
+    <p class="msg" id="signinMsg" role="status" aria-live="polite"></p>
+  </div>
+</main>
+
+<!-- Console -->
+<div class="app" id="app" hidden>
+  <header class="top">
+    <h1>STITCH <span>Admin</span></h1>
+    <p class="pulse" id="pulse"><span class="dot"></span><span id="pulseText">Connecting…</span></p>
+    <p class="me"><span id="me"></span> <button type="button" class="link" id="logout">Sign out</button></p>
+  </header>
+
+  <section class="live" aria-label="Live">
+    <div class="stat big"><b id="sOnline">–</b><span>On the site now</span></div>
+    <div class="stat"><b id="sForm">–</b><span>Filling in the form</span></div>
+    <div class="stat"><b id="sUploading">–</b><span>Uploading now</span></div>
+    <div class="stat"><b id="sPeople">–</b><span>People submitted</span></div>
+    <div class="stat"><b id="sWaiting">–</b><span>Waiting for review</span></div>
+    <div class="stat"><b id="sQueue">–</b><span>Files coming down</span></div>
+  </section>
+  <p class="pages" id="pages"></p>
+
+  <div class="cols">
+    <section class="subs" aria-labelledby="hSubs">
+      <div class="subs-head">
+        <h2 id="hSubs">Submissions</h2>
+        <input id="search" type="search" placeholder="Search name, email, title" aria-label="Search submissions">
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="Filter">
+        <button type="button" data-f="latest" aria-pressed="true">Everyone</button>
+        <button type="button" data-f="exhibit" aria-pressed="false">Exhibiting</button>
+        <button type="button" data-f="waiting" aria-pressed="false">Waiting review</button>
+        <button type="button" data-f="live" aria-pressed="false">In directory</button>
+        <button type="button" data-f="declined" aria-pressed="false">Said no to both</button>
+        <button type="button" data-f="problems" aria-pressed="false">Problems</button>
+        <button type="button" data-f="all" aria-pressed="false">Every attempt</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Exhibit</th><th>Directory</th><th>Files</th><th>State</th><th>When</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p class="empty" id="empty" hidden>No submissions match.</p>
+      </div>
+      <p class="downloads"><a href="/api/export">Download the sheet and headshots</a> · <a href="/api/export/images">Download every project image</a> (large)</p>
+    </section>
+
+    <aside class="feed" aria-labelledby="hFeed">
+      <h2 id="hFeed">Happening now</h2>
+      <ol id="feed"></ol>
+      <h2>Upload pipeline</h2>
+      <ul id="pipeline" class="pipeline"></ul>
+      <h2>Site today</h2>
+      <p class="hint" id="usage">–</p>
+      <h2><button type="button" class="link" id="auditBtn">Change log</button></h2>
+      <ol id="audit" class="audit" hidden></ol>
+    </aside>
+  </div>
+</div>
+
+<!-- Editor -->
+<dialog class="drawer" id="drawer" aria-labelledby="dName">
+  <form id="edit" novalidate>
+    <header class="drawer-head">
+      <div>
+        <p class="state" id="dState"></p>
+        <h2 id="dName"></h2>
+        <p class="hint" id="dMeta"></p>
+      </div>
+      <button type="button" class="link" id="dClose" aria-label="Close">Close ✕</button>
+    </header>
+
+    <div class="media" id="dMedia"></div>
+
+    <div class="review" id="dReview"></div>
+
+    <div class="grid">
+      <label>Full name<input name="name" maxlength="120"></label>
+      <label>Personal email<input name="email" type="email" maxlength="254"></label>
+      <label class="check"><input name="exhibit" type="checkbox"> Exhibiting on the night</label>
+      <label class="check"><input name="listed" type="checkbox"> Wants to be in the Student Directory</label>
+      <label>Degree<input name="degree" maxlength="120"></label>
+      <label>Project title<input name="title" maxlength="150"></label>
+      <label class="wide">Project overview<textarea name="overview" rows="6" maxlength="1500"></textarea></label>
+      <label>LinkedIn<input name="linkedin" maxlength="300"></label>
+      <label>Instagram<input name="instagram" maxlength="300"></label>
+      <label>Website<input name="website" maxlength="300"></label>
+      <label>Where from<input name="from" maxlength="120"></label>
+    </div>
+    <p class="msg" id="dMsg" role="status" aria-live="polite"></p>
+    <div class="actions">
+      <button type="submit" class="btn">[ Save changes ]</button>
+      <button type="button" class="link" id="dRevert">Undo my edits</button>
+    </div>
+
+    <details class="history" id="dHistory"><summary>Earlier attempts by this person</summary><ul></ul></details>
+
+    <details class="danger">
+      <summary>Delete this submission</summary>
+      <p class="hint">Removes the record and every file, on the server and in R2. It cannot be undone. Type the name exactly to confirm.</p>
+      <input id="dConfirm" autocomplete="off" aria-label="Type the name to confirm">
+      <button type="button" class="btn red" id="dDelete">[ Delete for good ]</button>
+    </details>
+  </form>
+</dialog>
+</body>
+</html>

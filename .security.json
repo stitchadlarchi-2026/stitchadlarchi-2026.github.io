@@ -10,18 +10,21 @@
     "optional LinkedIn, Instagram and website links, and place of origin",
     "project titles and overviews (up to 150 words)",
     "keyed HMAC of client IP addresses, in memory only, for rate limits",
-    "committee approvals and small web copies of project images for the Student Directory (public only once approved)"
+    "committee approvals and small web copies of project images for the Student Directory (public only once approved)",
+    "admin console: hashed sessions, an audit log of every change (who, when, before and after), and the three admins' email addresses",
+    "live view: a random per-page-load tab id, page and form state, in memory for 50 seconds only"
   ],
   "public_hostnames": [
     "stitchexhibition.com",
-    "www.stitchexhibition.com"
+    "www.stitchexhibition.com",
+    "admin.stitchexhibition.com (admin console, emailed one-time code, three addresses)"
   ],
   "retention": "every submission deleted after 2027-01-31 by the submissions service; R2 lifecycle deletes the bucket's objects on 2027-02-01",
   "recorded": "2026-11-25",
   "previous": "Lane A from 2026-09-29 to 2026-11-25, when the site took no input",
   "skill": "cybersecurity",
   "storage": "server volumes submissions-data and submissions-files; R2 bucket stitch-uploads (NCH account) until the deletion date",
-  "updated": "2026-11-26",
+  "updated": "2026-11-27",
   "public_routes": [
     "/_s/directory.json",
     "/_s/media/<id>/(photo|posterWeb).jpg (edge-cached 5 min)"
