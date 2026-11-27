@@ -176,6 +176,11 @@ to `/data/audit.log` and the console's change log. The decisions are in
 `deploy/submissions/console/`.
 
 To add or remove an admin, edit `CONSOLE_EMAILS` in `compose.yaml` and push.
+
+The live view depends on `deploy/usage/beacon.js`, served as `/_u.js`, which
+Cloudflare caches at the edge for up to four hours. After changing it, purge
+`https://stitchexhibition.com/_u.js` from the Cloudflare cache (dashboard →
+Caching → Purge, or the API), or visitors keep the old copy until it expires.
 Locally, `node deploy/submissions/dev.mjs` runs the console at
 `http://localhost:8001`: sign in as `dev@example.com`, and the code prints in
 that terminal instead of being emailed.
